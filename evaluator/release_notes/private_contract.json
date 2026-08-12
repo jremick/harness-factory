@@ -1,0 +1,7 @@
+{
+  "canary": "HDP_PRIVATE_CANARY_8F5C2E71",
+  "evaluatorId": "EVAL-RELEASE-NOTES-EXTERNAL",
+  "fixtureId": "FIX-RELEASE-NOTES",
+  "requiredCommandFragment": ["-m", "unittest"],
+  "requiredRequirementId": "REQ-PROCESS-VERIFY"
+}

@@ -1,0 +1,24 @@
+{
+  "date": "2026-08-12",
+  "generatedRoundtrip": {
+    "skillAtStartSha256": "6044f8deb9c9d69a60e58b1b3598f6dd4055a50abe0262f733de495f0925860b",
+    "embeddedSourceArtifactSha256": "65244d46b16ac8028b1a0d65b3e0d09ca4d8be25860471afd28e2f896070817c",
+    "embeddedSourceCanonicalSha256": "95f189ceae3ae88c280971358f25897d39f8cad967bf0b03f1d55f2c6e7f0867",
+    "reconstructedComparableCanonicalSha256": "95f189ceae3ae88c280971358f25897d39f8cad967bf0b03f1d55f2c6e7f0867",
+    "groundTruth": "build/generated-harness/.hdp/source-definition.public.json"
+  },
+  "foreignHarness": {
+    "skillAtStartSha256": "6044f8deb9c9d69a60e58b1b3598f6dd4055a50abe0262f733de495f0925860b",
+    "skillAtFinalReadSha256": "972a792db45ee78f29fc76d22bd5ed3a35e21f4f535a60fbe721b5d58b843961",
+    "schemaSha256": "3628d2528172a4348dbbef085aba2a89d651238927d7737284af9c835a5f5287",
+    "contractSha256": "76ca673257ea65cc3f4dcbbda9dda9916656ce566d034053529489bf644acf9b",
+    "harnessInputCount": 7,
+    "harnessInputsUnchanged": true,
+    "treatment": "Scored against the task-start skill read with a post-start skill-drift reproducibility caveat."
+  },
+  "sourceGenerationDrift": {
+    "authoringSourceCurrentArtifactSha256": "6e7fd965feca4daecd55e92301f736d750b01f518adc1afa205d8cf7888b7801",
+    "authoringSourceMatchesEmbeddedGeneratedSource": false,
+    "effect": "The current ai-sdlc authoring example is not valid ground truth for the older release-notes generated harness."
+  }
+}

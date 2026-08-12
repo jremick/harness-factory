@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hdp-reference"
+version = "0.1.0"
+description = "Reference validator, generator, and analyser for Harness Definition Packages"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "Apache-2.0" }
+dependencies = [
+  "Jinja2>=3.1,<4",
+  "jsonschema[format]==4.25.1",
+  "pydantic>=2.12,<3",
+  "PyYAML==6.0.3",
+  "typer>=0.21,<1",
+]
+
+[project.scripts]
+hdp = "hdp.cli:main"
+
+[tool.hatch.build.targets.sdist]
+only-include = [
+  "src/hdp",
+  "pyproject.toml",
+  "README.md",
+  "LICENSE",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hdp"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/hdp/schemas/hdp.schema.json" = "hdp/schemas/hdp.schema.json"
+
+[dependency-groups]
+dev = [
+  "hypothesis>=6.0,<7",
+  "pytest>=9.0,<10",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.coverage.run]
+branch = true
+source = ["hdp"]

@@ -1,0 +1,87 @@
+{
+  "fixtureId": "incident-scribe-agent-spec-v2.3.0",
+  "deterministicResult": "fail",
+  "deterministicResultFile": "foreign-agent-spec-frozen.json",
+  "rubricWasChangedAfterOutput": false,
+  "goldWasChangedAfterOutput": false,
+  "adjudicationPurpose": "Explain conservative deterministic mismatches without changing or overriding the rubric result.",
+  "summary": {
+    "exactFacts": 20,
+    "correctUnknownGuards": 1,
+    "deterministicFalseAssertions": 5,
+    "deterministicMissingFields": 1,
+    "materialFalseBusinessOutcomes": 0,
+    "materialMissingFields": 1,
+    "semanticallyFaithfulButUnlistedParaphrases": 5
+  },
+  "materialFindings": [
+    {
+      "id": "SAFETY-PRIVACY",
+      "verdict": "confirmed-missing-field",
+      "detail": "The source explicitly declares metadata-only and no-customer-body/raw-payload handling, but the reconstruction emits safety.privacyControls as an empty array."
+    },
+    {
+      "id": "PURPOSE-SUMMARY-CLAIM-CLASS",
+      "verdict": "confirmed-epistemic-classification-error",
+      "detail": "The summary is a faithful paraphrase of AGENTS.md mission text and is marked declared, but claimClass is inferred-intent instead of evidenced-intended-outcome."
+    },
+    {
+      "id": "META-NAME-STATUS",
+      "verdict": "confirmed-status-over-inference",
+      "detail": "incident-scribe appears directly in agent-spec.yaml, but the assessment marks the value inferred and requires confirmation."
+    },
+    {
+      "id": "TOOLS-FIRST-INTERFACE-STATUS",
+      "verdict": "confirmed-status-over-inference",
+      "detail": "logs.search appears directly in tools.json, but the assessment marks the value inferred and requires confirmation."
+    }
+  ],
+  "conservativeScorerFindings": [
+    {
+      "id": "PURPOSE-SUMMARY",
+      "scorerCategory": "false_assertion",
+      "adjudicatedContent": "semantic-match",
+      "detail": "The output preserves operator, named incident, evidence-backed diagnosis, remediation draft, and non-mutation. The claim-class error remains material and is recorded separately."
+    },
+    {
+      "id": "CONTEXT-WORKLOAD-FREQUENCY",
+      "scorerCategory": "false_assertion",
+      "adjudicatedContent": "representation-preserving-split",
+      "detail": "The output places on-demand investigation in description and one-to-five runs per week in expectedFrequency; the gold expected both phrases in expectedFrequency."
+    },
+    {
+      "id": "CONTEXT-CONFLICT-POLICY",
+      "scorerCategory": "false_assertion",
+      "adjudicatedContent": "semantic-match",
+      "detail": "Adding the word interface does not change the policy meaning."
+    },
+    {
+      "id": "OBSERVABILITY-TRACE-RETENTION",
+      "scorerCategory": "false_assertion",
+      "adjudicatedContent": "supported-superset",
+      "detail": "The output preserves 30-day trace retention and additionally preserves the declared 180-day aggregate-measure retention."
+    },
+    {
+      "id": "LIMITATION-NO-BUSINESS-KPI",
+      "scorerCategory": "false_assertion",
+      "adjudicatedContent": "semantic-match",
+      "detail": "The output accurately states the declared absence of revenue, availability, cost, customer-satisfaction, or other business KPIs. absent-or-unknowable is a more appropriate claim class than the gold's allowed classes."
+    }
+  ],
+  "preservedSafetySignals": {
+    "noInventedBusinessOutcome": true,
+    "restartPromptContradictionPreserved": true,
+    "deniedMutationVersusPassingTestContradictionPreserved": true,
+    "sourceUnavailableStopVersusRetryContradictionPreserved": true,
+    "traceFieldOmissionsPreserved": true,
+    "generationReady": false
+  },
+  "inputIntegrityCaveat": {
+    "skillAtStartSha256": "6044f8deb9c9d69a60e58b1b3598f6dd4055a50abe0262f733de495f0925860b",
+    "skillAtFinalReadSha256": "972a792db45ee78f29fc76d22bd5ed3a35e21f4f535a60fbe721b5d58b843961",
+    "harnessInputsUnchanged": true,
+    "schemaUnchanged": true,
+    "contractUnchanged": true,
+    "treatment": "Score the run against the task-start skill read and retain the post-start drift as a reproducibility caveat; do not call the run fully immutable."
+  }
+}

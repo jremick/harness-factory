@@ -1,0 +1,778 @@
+kind: HDPSemanticRuleSet
+apiVersion: hdp.dev/v0alpha1
+metadata:
+  id: urn:hdp:rules:core:v0alpha1
+  title: Core HDP cross-document semantic rules
+  version: 0.1.0
+  status: draft
+spec:
+  implementationStatus: proposed
+  expressionLanguage:
+    id: hdp-cel
+    version: 0.1.0
+    base: CEL
+    execution:
+      network: denied
+      filesystem: denied
+      wallClock: denied
+      randomness: denied
+      hostFunctions: allowlisted
+    bindings:
+      hdp: Frozen resolved package graph
+      profile: Selected base and capability profiles
+      subject: Optional harness, run, or claim subject
+    functions:
+      - signature: all(kind)
+        meaning: Return every resolved entity of the named kind.
+      - signature: exists(ref)
+        meaning: Return true when a typed reference resolves.
+      - signature: kindOf(ref)
+        meaning: Return the resolved target kind.
+      - signature: refs(entity, field)
+        meaning: Return typed references at the named field.
+      - signature: tracePath(source, relations, targetKind)
+        meaning: Return true when a typed path exists through the trace graph.
+      - signature: enabled(entity, profile)
+        meaning: Return true when the entity applies to the selected profile.
+      - signature: protected(ruleId, profile)
+        meaning: Return true when the selected profile makes a rule non-waivable.
+      - signature: hasValidWaiver(entity, ruleId, now)
+        meaning: Return true for an authorized, unexpired, profile-permitted waiver.
+      - signature: allEntities(package)
+        meaning: Return every resolved entity regardless of kind.
+      - signature: allReferences(package)
+        meaning: Return every typed reference with its source location.
+      - signature: allFallbacks(package)
+        meaning: Return every normalized model, provider, tool, and runtime fallback edge.
+      - signature: allHarnessReadableSources(package)
+        meaning: Return all context, state, cache, retrieval, training, and telemetry sources readable by the harness.
+      - signature: allProviderDataFlows(package)
+        meaning: Return normalized data flows crossing a model-provider boundary.
+      - signature: allRoleToolBindings(package)
+        meaning: Return all role, task, and tool binding tuples.
+      - signature: allEntities(package).map(field).isUnique()
+        meaning: Return true when projected values are unique.
+      - signature: list.containsAll(required)
+        meaning: Return true when the list contains every required value.
+      - signature: value.isSubsetOf(other)
+        meaning: Return true when every normalized grant or quantity in value is no greater than other.
+      - signature: uri.isReverseDns()
+        meaning: Return true when an extension namespace conforms to the registered reverse-DNS syntax.
+      - signature: approvalPolicy(ref)
+        meaning: Resolve an approval policy reference.
+      - signature: baseline(ref)
+        meaning: Resolve a monitoring baseline reference.
+      - signature: budget(entity)
+        meaning: Return the effective aggregate budget for an entity.
+      - signature: compatible(from, to, requiredCapabilities)
+        meaning: Return true when the target preserves every required capability under the declared compatibility matrix.
+      - signature: custodyValid(evidence)
+        meaning: Return true when required integrity, custody, and access attestations validate.
+      - signature: datasetLineage(package).hasNoForbiddenOverlap(leftUses, rightUses)
+        meaning: Return true when lineage and contamination checks show no prohibited overlap between dataset uses.
+      - signature: declaredRuntimeAccess(package)
+        meaning: Return the normalized maximum runtime network, storage, process, and device access declared by the package.
+      - signature: declaredSecretConsumers(package)
+        meaning: Return the declared principal set for all secret handles.
+      - signature: declaredTool(ref)
+        meaning: Return true when a tool reference resolves to an enabled declared tool.
+      - signature: effectiveGrant(roleRef, toolRef, taskRef)
+        meaning: Calculate the deny-overrides permission decision for a role, tool, and task.
+      - signature: effectiveRuntimeAccess(subject)
+        meaning: Return runtime-observed or deployment-read-back access for the pinned subject.
+      - signature: emitsClassification(eventType, classification)
+        meaning: Return true when an event schema can emit the named data classification after source redaction.
+      - signature: emitsSecrets(eventType)
+        meaning: Return true when an event schema or collector can emit secret values.
+      - signature: evaluationStart(fixtureSet)
+        meaning: Return the earliest evaluated run start using the fixture set.
+      - signature: evaluatorPermissions(evaluator)
+        meaning: Return the normalized effective evaluator permission set.
+      - signature: evidenceFor(claim)
+        meaning: Return all evidence records the claim uses, including through trace edges.
+      - signature: expiredFor(evidence, claim)
+        meaning: Return true when evidence violates the claim type, profile, or measure freshness policy.
+      - signature: extensions(package)
+        meaning: Return every normalized extension declaration and payload.
+      - signature: harnessCanInvoke(evaluator)
+        meaning: Return true when any harness role, tool, interface, network path, or delegated capability can invoke the evaluator.
+      - signature: hasCycle(flow)
+        meaning: Return true when the normalized state-transition graph is cyclic.
+      - signature: hasHardBudget(entity, resource)
+        meaning: Return true when an effective hard budget covers the entity and resource.
+      - signature: hasValueField(secretRef)
+        meaning: Return true when a secret reference contains a value-like or materialized-secret field.
+      - signature: highRiskToolActions(package)
+        meaning: Return tool actions classified high or critical by side-effect, data, and risk policies.
+      - signature: instructionAuthorityGraph(package)
+        meaning: Return the normalized priority and conflict graph for instruction layers.
+      - signature: graph.isAcyclic()
+        meaning: Return true when a graph contains no directed cycle.
+      - signature: graph.isTotallyOrderedForConflicts()
+        meaning: Return true when every pair of potentially conflicting instructions has a deterministic authority order.
+      - signature: isHiddenFixture(source)
+        meaning: Return true when lineage or identity links a source to a hidden fixture or answer asset.
+      - signature: kindAllowedAt(sourcePointer, targetKind)
+        meaning: Return true when the schema vocabulary permits a target kind at a source location.
+      - signature: materialChangeKinds()
+        meaning: Return the profile-controlled set of changes that can invalidate assurance.
+      - signature: mayRetryMutation(retryPolicy)
+        meaning: Return true when a retry policy can repeat an externally mutating action.
+      - signature: mutationIsIdempotentOrCompensated(retryPolicy)
+        meaning: Return true when each retried mutation is idempotent or has a tested compensation contract.
+      - signature: overridesCore(extension)
+        meaning: Return true when an extension shadows, redefines, or removes a core field.
+      - signature: permissions(entityRef)
+        meaning: Return the normalized effective permission set for an entity.
+      - signature: providerPolicy(providerRef)
+        meaning: Resolve and normalize the policy applicable to a provider.
+      - signature: recovery(ref)
+        meaning: Resolve a recovery policy reference.
+      - signature: secretConsumers(subject)
+        meaning: Return runtime-observed principals that received secret material.
+      - signature: secretScan(package)
+        meaning: Return classified embedded-secret candidates from keys, values, and decoded scalar forms.
+      - signature: subjectMatches(evidence, digestTuple)
+        meaning: Return true when evidence was collected for the complete pinned claim subject.
+      - signature: suiteTypes(package)
+        meaning: Return the set of enabled evaluation suite types.
+      - signature: unknownExtensions(package)
+        meaning: Return enabled extension namespaces unsupported by the validator.
+      - signature: unknownValues(package)
+        meaning: Return every explicit unknown value record.
+      - signature: validRiskAcceptance(risk)
+        meaning: Return true when acceptance is authorized, scoped, unexpired, and bound to the current residual risk.
+      - signature: waivedRequirements(package)
+        meaning: Return all requirements with an active waiver.
+      - signature: waiverAllowed(requirement, profile)
+        meaning: Return true when no applicable rule or profile marks the requirement non-waivable.
+      - signature: weakensCoreOrProfile(extension)
+        meaning: Return true when an extension reduces an effective core or selected-profile obligation.
+      - signature: weakensPolicy(from, to)
+        meaning: Return true when a fallback target provides weaker effective safety, data, permission, or assurance controls.
+      - signature: digestTuple.isCompleteFor(claimType)
+        meaning: Return true when the subject tuple contains every identity required by the claim type and profile.
+  severities:
+    error: Prevents conformance for the selected profile.
+    warning: Requires explicit review but does not alone prevent conformance.
+    info: Advisory diagnostic.
+  rules:
+    - id: HDP-SEM-001
+      title: Globally unique entity identity
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "allEntities(hdp).map(e, e.canonicalId).isUnique()"
+      message: Every resolved entity canonical ID must be unique.
+      evidence: [resolved-entity-index]
+
+    - id: HDP-SEM-002
+      title: Typed references resolve to allowed kinds
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "allReferences(hdp).all(r, exists(r.ref) && kindAllowedAt(r.sourcePointer, kindOf(r.ref)) && (r.expectedKind == '' || kindOf(r.ref) == r.expectedKind))"
+      message: Every typed reference must resolve to a kind allowed at its source field.
+      evidence: [reference-resolution-report]
+
+    - id: HDP-SEM-003
+      title: Imported content is digest pinned
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "hdp.imports.size() > 0"
+      assert: "hdp.imports.all(i, i.digest.algorithm == 'sha256' && i.digest.value.size() == 64 && i.resolvedVersion != '')"
+      message: Every import must have an immutable digest and resolved version.
+      evidence: [import-resolution-manifest]
+
+    - id: HDP-SEM-004
+      title: Unknown mandatory information is governed
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "unknownValues(hdp).size() > 0"
+      assert: "unknownValues(hdp).all(u, u.reason != '' && exists(u.ownerRef) && u.resolveBy != '' && u.impact != '')"
+      message: An explicit unknown must have a reason, owner, deadline, and impact.
+      evidence: [unknown-register]
+
+    - id: HDP-SEM-010
+      title: Purpose has intended users and outcomes
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "all('Purpose').size() > 0"
+      assert: "all('Purpose').all(p, refs(p, 'userRefs').size() > 0 && refs(p, 'outcomeRefs').size() > 0)"
+      message: Each purpose must name intended users and intended outcomes.
+      evidence: [purpose-coverage-report]
+
+    - id: HDP-SEM-011
+      title: Outcomes are measurable and decidable
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('Outcome').all(o, refs(o, 'measureRefs').size() > 0 && exists(o.decisionRuleRef))"
+      message: Every intended outcome must have at least one measure and a decision rule.
+      evidence: [outcome-measure-coverage]
+
+    - id: HDP-SEM-012
+      title: Thresholds define sample and missing-data behavior
+      severity: error
+      protected: false
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('Threshold').all(t, t.comparator != '' && t.target.unit != '' && t.minimumSampleSize > 0 && t.missingDataPolicy != '')"
+      message: Assurance-bearing thresholds require a comparator, unit, minimum sample, and missing-data policy.
+      evidence: [measure-definition-review]
+
+    - id: HDP-SEM-013
+      title: Segment floors are not hidden by aggregate success
+      severity: error
+      protected: false
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "all('Measure').exists(m, m.segments.size() > 0)"
+      assert: "all('Measure').all(m, m.segments.size() == 0 || m.segmentDecisionRuleRefs.size() == m.segments.size())"
+      message: Every declared material segment must have an explicit segment decision rule.
+      evidence: [segment-coverage-report]
+
+    - id: HDP-SEM-020
+      title: Tasks have complete contracts
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('Task').all(t, exists(t.inputContractRef) && exists(t.outputContractRef) && t.completionConditions.size() > 0 && refs(t, 'outcomeRefs').size() > 0)"
+      message: Each task must have input/output contracts, completion conditions, and an outcome link.
+      evidence: [task-contract-coverage]
+
+    - id: HDP-SEM-021
+      title: Assumptions are testable and expiring
+      severity: error
+      protected: false
+      profiles: [development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('Assumption').all(a, a.validationMethodRef != null && exists(a.ownerRef) && a.expiresAt != '' && a.failureImpact != '')"
+      message: Every active assumption must have validation, ownership, expiry, and failure impact.
+      evidence: [assumption-register]
+
+    - id: HDP-SEM-022
+      title: Critical dependencies declare failure behavior
+      severity: error
+      protected: false
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('Dependency').filter(d, d.criticality == 'critical').all(d, d.failureModeRef != null && d.availabilityExpectation != '' && d.substituteOrStop != '')"
+      message: Critical dependencies must specify availability expectations and failure handling.
+      evidence: [dependency-readiness-review]
+
+    - id: HDP-SEM-023
+      title: Exclusions narrow claim scope
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "all('Exclusion').size() > 0"
+      assert: "all('Exclusion').all(e, e.scope != '' && e.rationale != '' && e.claimImpact != '')"
+      message: Exclusions must be explicit and state their impact on claim scope.
+      evidence: [exclusion-register]
+
+    - id: HDP-SEM-030
+      title: Mandatory requirements trace to verification and evidence
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('Requirement').filter(r, r.level in ['must', 'must-not']).all(r, tracePath(r, ['verifiedBy'], 'VerificationMethod') && tracePath(r, ['verifiedBy', 'produces'], 'EvidenceContract'))"
+      message: Every mandatory requirement must trace to verification and expected evidence.
+      evidence: [requirements-trace-matrix]
+
+    - id: HDP-SEM-031
+      title: Requirement waivers are bounded
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "waivedRequirements(hdp).size() > 0"
+      assert: "waivedRequirements(hdp).all(r, waiverAllowed(r, profile) && r.waiver.scope != '' && exists(r.waiver.approverRef) && r.waiver.expiresAt != '' && refs(r.waiver, 'compensatingControlRefs').size() > 0)"
+      message: A requirement waiver must be profile-permitted, approved, expiring, scoped, and compensated.
+      evidence: [waiver-register]
+
+    - id: HDP-SEM-040
+      title: Mutable model aliases have snapshot controls
+      severity: error
+      protected: false
+      profiles: [development, controlled, production, high-assurance]
+      appliesWhen: "all('ModelPolicy').exists(m, m.modelRevision.mutable == true)"
+      assert: "all('ModelPolicy').filter(m, m.modelRevision.mutable == true).all(m, m.resolutionEvidenceRef != null && m.reassessmentTriggerRef != null && m.reproducibilityGrade == 'limited')"
+      message: Mutable model aliases require observed resolution evidence, reassessment, and limited reproducibility disclosure.
+      evidence: [model-resolution-record]
+
+    - id: HDP-SEM-041
+      title: Provider data handling satisfies data policy
+      severity: error
+      protected: true
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "allProviderDataFlows(hdp).all(f, providerPolicy(f.providerRef).permits(f.classification, f.region, f.purpose, f.retention))"
+      message: Provider use must comply with classification, region, purpose, and retention controls.
+      evidence: [provider-data-flow-review]
+
+    - id: HDP-SEM-042
+      title: Model fallback does not silently weaken capability or policy
+      severity: error
+      protected: false
+      profiles: [development, controlled, production, high-assurance]
+      appliesWhen: "all('RoutingPolicy').exists(r, r.fallbacks.size() > 0)"
+      assert: "allFallbacks(hdp).all(f, compatible(f.from, f.to, f.requiredCapabilities) && !weakensPolicy(f.from, f.to) && f.userDisclosure != '')"
+      message: A fallback must preserve required capabilities and controls or stop with disclosure.
+      evidence: [fallback-compatibility-report]
+
+    - id: HDP-SEM-050
+      title: Contract schemas are immutable
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('DataContract').all(c, c.schema.uri != '' && c.schema.digest.value.size() == 64 && c.mediaType != '')"
+      message: Every data contract must identify a media type and digest-pinned schema.
+      evidence: [contract-resolution-report]
+
+    - id: HDP-SEM-051
+      title: Mutating side effects are authorized and recoverable
+      severity: error
+      protected: true
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "all('SideEffectContract').exists(s, s.effect == 'mutation')"
+      assert: "all('SideEffectContract').filter(s, s.effect == 'mutation').all(s, s.authorizationPolicyRef != null && s.evidenceContractRef != null && (s.idempotent == true || s.compensationRef != null))"
+      message: Every mutation requires authorization, evidence, and idempotency or compensation.
+      evidence: [side-effect-control-review]
+
+    - id: HDP-SEM-060
+      title: Context sources have provenance and authority
+      severity: error
+      protected: false
+      profiles: [development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('ContextSource').all(s, s.origin != '' && s.authority != '' && s.classification != '' && s.freshnessPolicyRef != null && s.integrityPolicyRef != null)"
+      message: Context sources require origin, authority, classification, freshness, and integrity policy.
+      evidence: [context-source-register]
+
+    - id: HDP-SEM-061
+      title: Hidden evaluation material is absent from harness context
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "allHarnessReadableSources(hdp).all(s, s.classification != 'evaluation-hidden' && !isHiddenFixture(s))"
+      message: Hidden evaluation data must not be readable through harness context, memory, caches, or retrieval.
+      evidence: [fixture-segregation-scan, retrieval-index-attestation]
+
+    - id: HDP-SEM-062
+      title: Instruction authority is total and acyclic
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "all('InstructionLayer').size() > 1"
+      assert: "instructionAuthorityGraph(hdp).isAcyclic() && instructionAuthorityGraph(hdp).isTotallyOrderedForConflicts()"
+      message: Conflicting instruction layers require a deterministic acyclic authority order.
+      evidence: [instruction-authority-report]
+
+    - id: HDP-SEM-070
+      title: Tool availability requires an explicit grant
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "allRoleToolBindings(hdp).all(b, declaredTool(b.toolRef) && effectiveGrant(b.roleRef, b.toolRef, b.taskRef).allowed == true)"
+      message: Declaring a tool does not grant it; every role/task use needs an effective grant.
+      evidence: [effective-permissions-report]
+
+    - id: HDP-SEM-071
+      title: High-risk tool actions require approval
+      severity: error
+      protected: true
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "highRiskToolActions(hdp).size() > 0"
+      assert: "highRiskToolActions(hdp).all(a, a.approvalPolicyRef != null && approvalPolicy(a.approvalPolicyRef).failClosed == true && a.evidenceContractRef != null)"
+      message: High-risk external actions require a fail-closed approval policy and evidence.
+      evidence: [approval-path-test]
+
+    - id: HDP-SEM-080
+      title: Orchestration is bounded
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('Flow').all(f, !hasCycle(f) || (f.iterationLimit > 0 && f.stopConditionRef != null && f.wallTimeBudgetRef != null))"
+      message: Every cycle must have iteration, wall-time, and stop bounds.
+      evidence: [control-flow-analysis]
+
+    - id: HDP-SEM-081
+      title: Delegation cannot escalate authority or resources
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "all('Delegation').size() > 0"
+      assert: "all('Delegation').all(d, permissions(d.delegateRoleRef).isSubsetOf(permissions(d.delegatorRoleRef)) && budget(d).isSubsetOf(budget(d.delegatorRoleRef)) && d.maxDepth >= 1 && d.maxFanOut >= 1 && d.accountabilityOwnerRef != null)"
+      message: Delegation must be bounded, non-escalating, and accountable.
+      evidence: [delegation-authority-analysis]
+
+    - id: HDP-SEM-082
+      title: Evaluator is not a harness role or tool
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('Evaluator').all(e, !all('Role').exists(r, r.canonicalId == e.canonicalId) && !all('Tool').exists(t, t.canonicalId == e.canonicalId) && !harnessCanInvoke(e))"
+      message: Evaluators must remain outside the harness role and tool graph.
+      evidence: [trust-boundary-analysis]
+
+    - id: HDP-SEM-090
+      title: Memory is classified, correctable, and expiring
+      severity: error
+      protected: false
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('MemoryPolicy').all(m, m.classification != '' && m.provenanceRequired == true && m.retentionPolicyRef != null && m.deletionPolicyRef != null && m.correctionPolicyRef != null)"
+      message: Persistent memory requires provenance, classification, correction, retention, and deletion.
+      evidence: [memory-governance-review]
+
+    - id: HDP-SEM-091
+      title: State migrations are reversible or explicitly lossy
+      severity: error
+      protected: false
+      profiles: [production, high-assurance]
+      appliesWhen: "all('StateMigration').size() > 0"
+      assert: "all('StateMigration').all(m, m.validationRef != null && m.backupRef != null && (m.rollbackRef != null || m.dataLossDeclarationRef != null))"
+      message: State migrations require validation, backup, and rollback or approved loss disclosure.
+      evidence: [migration-drill-evidence]
+
+    - id: HDP-SEM-100
+      title: Permission evaluation is deny by default
+      severity: error
+      protected: true
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('PermissionPolicy').all(p, p.defaultDecision == 'deny' && p.conflictResolution == 'deny-overrides')"
+      message: Effective permission policies must fail closed and deny on conflict.
+      evidence: [permission-policy-test]
+
+    - id: HDP-SEM-101
+      title: Secrets are opaque references only
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "secretScan(hdp).embeddedSecretCandidates.size() == 0 && all('SecretRef').all(s, s.storeRef != null && s.keyId != '' && !hasValueField(s))"
+      message: HDP documents may reference secrets but must never embed secret values.
+      evidence: [secret-scan-report]
+
+    - id: HDP-SEM-102
+      title: Approval policies separate request and approval when required
+      severity: error
+      protected: false
+      profiles: [high-assurance]
+      appliesWhen: "all('ApprovalPolicy').exists(a, a.riskClass == 'high')"
+      assert: "all('ApprovalPolicy').filter(a, a.riskClass == 'high').all(a, a.separationOfDuties == true && a.quorum >= 1 && a.expiresAfter != '')"
+      message: High-risk approvals require separation of duties, quorum, and expiry.
+      evidence: [approval-separation-test]
+
+    - id: HDP-SEM-110
+      title: Executions have hard budgets and stop behavior
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('Task').all(t, hasHardBudget(t, 'wallTime') && (hasHardBudget(t, 'cost') || hasHardBudget(t, 'toolCalls')) && t.stopConditionRefs.size() > 0)"
+      message: Every task must have hard runtime/resource bounds and stop conditions.
+      evidence: [budget-coverage-report]
+
+    - id: HDP-SEM-111
+      title: Budget exhaustion fails safely
+      severity: error
+      protected: true
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('Budget').filter(b, b.enforcement == 'hard').all(b, b.exhaustionBehavior in ['cancel', 'safe-checkpoint-and-cancel', 'escalate-and-block'] && b.cleanupRef != null)"
+      message: Hard budget exhaustion must cancel or block safely and declare cleanup.
+      evidence: [budget-exhaustion-test]
+
+    - id: HDP-SEM-120
+      title: Retries are bounded and safe for mutations
+      severity: error
+      protected: true
+      profiles: [development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('RetryPolicy').all(r, r.maxAttempts > 0 && r.retryBudgetRef != null && (!mayRetryMutation(r) || mutationIsIdempotentOrCompensated(r)))"
+      message: Retries require limits and cannot repeat unsafe mutations.
+      evidence: [retry-failure-injection-test]
+
+    - id: HDP-SEM-121
+      title: Severe failures have escalation and safe state
+      severity: error
+      protected: false
+      profiles: [production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('FailureMode').filter(f, f.severity in ['critical', 'high']).all(f, f.recoveryRef != null && f.escalationRef != null && recovery(f.recoveryRef).safeState != '')"
+      message: High and critical failure modes require recovery, escalation, and a defined safe state.
+      evidence: [failure-mode-coverage]
+
+    - id: HDP-SEM-130
+      title: Trace context spans model, tool, and evaluator boundaries
+      severity: error
+      protected: false
+      profiles: [development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('TracePolicy').all(t, t.correlationIdRequired == true && t.spanKinds.containsAll(['task', 'model', 'tool', 'evaluator']) && t.clockPolicyRef != null)"
+      message: Trace policy must correlate task, model, tool, and evaluator activity.
+      evidence: [trace-propagation-test]
+
+    - id: HDP-SEM-131
+      title: Telemetry excludes secrets and hidden fixtures
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('EventType').all(e, !emitsClassification(e, 'evaluation-hidden') && !emitsSecrets(e) && e.redactionPolicyRef != null)"
+      message: Event schemas must redact secrets and hidden evaluation data before export.
+      evidence: [telemetry-redaction-test]
+
+    - id: HDP-SEM-132
+      title: Automated interventions are authorized and reversible
+      severity: error
+      protected: false
+      profiles: [production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('Intervention').filter(i, i.automated == true).all(i, i.authorizationPolicyRef != null && i.postCheckRef != null && (i.reversible == true || i.approvalPolicyRef != null))"
+      message: Automated interventions require authorization, post-check, and reversibility or approval.
+      evidence: [intervention-control-test]
+
+    - id: HDP-SEM-140
+      title: Material risks map to controls and evaluations
+      severity: error
+      protected: false
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('Risk').filter(r, r.residualRating in ['high', 'critical']).all(r, refs(r, 'treatmentRefs').size() > 0 && tracePath(r, ['mitigatedBy', 'verifiedBy'], 'EvaluationPlan'))"
+      message: High and critical risks require treatment and evaluation coverage.
+      evidence: [risk-control-evaluation-matrix]
+
+    - id: HDP-SEM-141
+      title: Compliance claims are scoped and sourced
+      severity: error
+      protected: true
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('ComplianceObligation').all(c, c.source.uri != '' && c.source.version != '' && c.jurisdiction != '' && c.applicabilityRationale != '' && refs(c, 'controlRefs').size() > 0 && refs(c, 'evidenceRefs').size() > 0)"
+      message: Compliance obligations require authoritative source, scope, applicability, controls, and evidence.
+      evidence: [compliance-mapping-review]
+
+    - id: HDP-SEM-142
+      title: Prohibited uses are exercised by negative evaluation
+      severity: error
+      protected: false
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "all('ProhibitedUse').size() > 0"
+      assert: "all('ProhibitedUse').all(p, tracePath(p, ['validatedBy'], 'NegativeEvaluationSuite'))"
+      message: Each prohibited use must have negative evaluation coverage.
+      evidence: [prohibited-use-test-coverage]
+
+    - id: HDP-SEM-150
+      title: Evaluation plans are complete
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('EvaluationPlan').all(p, refs(p, 'scenarioRefs').size() > 0 && refs(p, 'metricRefs').size() > 0 && refs(p, 'evaluatorRefs').size() > 0 && p.decisionRuleRef != null && p.resultContractRef != null)"
+      message: Evaluation plans require scenarios, metrics, evaluators, a decision rule, and result contract.
+      evidence: [evaluation-plan-coverage]
+
+    - id: HDP-SEM-151
+      title: Evaluator permissions exclude harness control
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('Evaluator').all(e, evaluatorPermissions(e).none(p, p in ['invoke:harness', 'write:harness-state', 'read:harness-secrets', 'write:harness-context']) && e.forbiddenAccess.containsAll(['harness-runtime', 'harness-retrieval-index']))"
+      message: Evaluators must not control the harness or expose hidden state to it.
+      evidence: [evaluator-permission-attestation]
+
+    - id: HDP-SEM-152
+      title: Hidden fixtures have protected custody and prior commitment
+      severity: error
+      protected: true
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "all('FixtureSet').exists(f, f.visibility == 'hidden')"
+      assert: "all('FixtureSet').filter(f, f.visibility == 'hidden').all(f, f.commitment.value.size() == 64 && f.custodianRef != null && f.accessPolicyRef != null && f.rotationPolicyRef != null && f.commitmentTime < evaluationStart(f))"
+      message: Hidden fixtures require a pre-run digest commitment, custodian, access policy, and rotation policy.
+      evidence: [fixture-custody-attestation, pre-run-commitment]
+
+    - id: HDP-SEM-153
+      title: Train, tune, and evaluate datasets are separated
+      severity: error
+      protected: true
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "datasetLineage(hdp).hasNoForbiddenOverlap(['train', 'prompt-tune', 'development'], ['hidden-evaluation']) && all('Dataset').all(d, d.contaminationPolicyRef != null)"
+      message: Hidden evaluation content must not overlap training, tuning, development, or harness-readable data.
+      evidence: [dataset-lineage-report, contamination-scan]
+
+    - id: HDP-SEM-154
+      title: Model judges are calibrated and contestable
+      severity: error
+      protected: false
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "all('Evaluator').exists(e, e.method == 'model-judge')"
+      assert: "all('Evaluator').filter(e, e.method == 'model-judge').all(e, e.modelRevision.pinned == true && e.calibrationRef != null && e.biasAnalysisRef != null && e.uncertaintyPolicyRef != null && e.adjudicationRef != null)"
+      message: A model judge requires a pinned revision, calibration, bias analysis, uncertainty handling, and adjudication.
+      evidence: [judge-calibration-report]
+
+    - id: HDP-SEM-155
+      title: Required negative, adversarial, and regression suites exist
+      severity: error
+      protected: false
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "suiteTypes(hdp).containsAll(['positive', 'negative', 'adversarial', 'regression'])"
+      message: Controlled and higher profiles require positive, negative, adversarial, and regression evaluation suites.
+      evidence: [evaluation-suite-inventory]
+
+    - id: HDP-SEM-156
+      title: Inconclusive evaluations do not pass
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('ResultPolicy').all(p, p.inconclusiveMapping != 'pass' && p.notRunMapping != 'pass' && p.missingDataMapping != 'pass')"
+      message: Inconclusive, not-run, and missing-data states cannot be mapped to pass.
+      evidence: [result-policy-review]
+
+    - id: HDP-SEM-160
+      title: Deployment artifacts and bindings are pinned and verified
+      severity: error
+      protected: true
+      profiles: [production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('Deployment').all(d, refs(d, 'artifactRefs').size() > 0 && refs(d, 'environmentBindingRefs').size() > 0 && d.rollbackRef != null) && all('RuntimeArtifact').all(a, a.digest.value.size() == 64 && a.provenanceRef != null)"
+      message: Production deployments require pinned artifacts, verified environment bindings, provenance, and rollback.
+      evidence: [deployment-manifest, runtime-readback]
+
+    - id: HDP-SEM-161
+      title: Runtime enforces declared network and secret boundaries
+      severity: error
+      protected: true
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "true"
+      assert: "effectiveRuntimeAccess(subject).isSubsetOf(declaredRuntimeAccess(hdp)) && secretConsumers(subject).isSubsetOf(declaredSecretConsumers(hdp))"
+      message: Runtime-observed access must not exceed HDP network, storage, or secret grants.
+      evidence: [runtime-policy-readback]
+
+    - id: HDP-SEM-170
+      title: Drift rules have pinned baselines and interventions
+      severity: error
+      protected: false
+      profiles: [production, high-assurance]
+      appliesWhen: "true"
+      assert: "all('DriftRule').all(d, d.baselineRef != null && baseline(d.baselineRef).subjectDigest != '' && d.thresholdRef != null && d.persistenceWindow != '' && d.interventionRef != null)"
+      message: Drift detection requires a subject-bound baseline, threshold, persistence window, and response.
+      evidence: [monitoring-config-readback]
+
+    - id: HDP-SEM-171
+      title: Material changes trigger reassessment
+      severity: error
+      protected: true
+      profiles: [production, high-assurance]
+      appliesWhen: "true"
+      assert: "materialChangeKinds().all(k, all('ReassessmentTrigger').exists(t, t.changeKinds.contains(k) && t.requiredEvaluationScope != ''))"
+      message: Model, provider, context, tool, runtime, policy, data, and incident changes need reassessment rules.
+      evidence: [change-trigger-coverage]
+
+    - id: HDP-SEM-180
+      title: Assurance claims are immutable, scoped, and expiring
+      severity: error
+      protected: true
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "all('Claim').size() > 0"
+      assert: "all('Claim').all(c, c.subjectDigestTuple.isCompleteFor(c.type) && c.scope != '' && c.profileRef != null && c.issuedAt != '' && c.expiresAt != '' && c.invalidationTriggerRefs.size() > 0 && refs(c, 'supportingEvidenceRefs').size() > 0)"
+      message: Assurance claims require immutable subject identity, scope, profile, evidence, expiry, and invalidation triggers.
+      evidence: [claim-integrity-report]
+
+    - id: HDP-SEM-181
+      title: Evidence is fresh enough for the claim
+      severity: error
+      protected: true
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "all('Claim').size() > 0"
+      assert: "all('Claim').all(c, evidenceFor(c).all(e, !expiredFor(e, c) && subjectMatches(e, c.subjectDigestTuple) && custodyValid(e)))"
+      message: Claim evidence must be current, subject-matched, and custody-valid.
+      evidence: [evidence-freshness-report]
+
+    - id: HDP-SEM-190
+      title: Extensions cannot weaken core semantics
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "extensions(hdp).size() > 0"
+      assert: "extensions(hdp).all(x, x.namespace.isReverseDns() && x.schemaDigest.value.size() == 64 && !overridesCore(x) && !weakensCoreOrProfile(x))"
+      message: Extensions must be namespaced, schema-pinned, and non-weakening.
+      evidence: [extension-analysis]
+
+    - id: HDP-SEM-191
+      title: Required unknown extensions fail conformance
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "unknownExtensions(hdp).size() > 0"
+      assert: "unknownExtensions(hdp).all(x, x.required == false)"
+      message: A consumer cannot conform when it does not understand a required extension.
+      evidence: [extension-support-report]
+
+    - id: HDP-SEM-192
+      title: Breaking changes include migration and assurance impact
+      severity: error
+      protected: false
+      profiles: [development, controlled, production, high-assurance]
+      appliesWhen: "all('Change').exists(c, c.compatibility == 'breaking')"
+      assert: "all('Change').filter(c, c.compatibility == 'breaking').all(c, c.migrationRef != null && c.assuranceImpact != '' && c.rollbackOrStop != '')"
+      message: Breaking changes require migration, assurance impact, and rollback or stop guidance.
+      evidence: [change-compatibility-report]
+
+    - id: HDP-SEM-193
+      title: Deprecations have bounded removal and replacement
+      severity: error
+      protected: false
+      profiles: [development, controlled, production, high-assurance]
+      appliesWhen: "all('Deprecation').size() > 0"
+      assert: "all('Deprecation').all(d, d.replacementRef != null && (d.removalVersion != '' || d.removalDate != '') && d.migrationRef != null && d.assuranceImpact != '')"
+      message: Deprecations require a replacement, removal bound, migration, and assurance impact.
+      evidence: [deprecation-register]
+
+    - id: HDP-SEM-200
+      title: High residual risks have valid acceptance or block release
+      severity: error
+      protected: true
+      profiles: [production, high-assurance]
+      appliesWhen: "all('Risk').exists(r, r.residualRating in ['high', 'critical'])"
+      assert: "all('Risk').filter(r, r.residualRating in ['high', 'critical']).all(r, r.releaseBlocking == true || validRiskAcceptance(r))"
+      message: High or critical residual risks must block release or have valid authorized acceptance.
+      evidence: [risk-acceptance-register]
+
+    - id: HDP-SEM-201
+      title: Limitations are disclosed at affected interfaces
+      severity: error
+      protected: false
+      profiles: [controlled, production, high-assurance]
+      appliesWhen: "all('Limitation').size() > 0"
+      assert: "all('Limitation').all(l, l.affectedScope.size() > 0 && l.impact != '' && l.disclosureRefs.size() > 0 && l.reviewTriggerRef != null)"
+      message: Limitations must name affected scope, impact, disclosure surfaces, and review trigger.
+      evidence: [limitation-disclosure-review]
+
+    - id: HDP-SEM-202
+      title: Blocking open questions prevent conformance claims
+      severity: error
+      protected: true
+      profiles: [core, development, controlled, production, high-assurance]
+      appliesWhen: "all('OpenQuestion').exists(q, q.blocking == true && q.status != 'resolved')"
+      assert: "all('Claim').size() == 0"
+      message: No conformance or assurance claim may be issued while a blocking question remains unresolved.
+      evidence: [open-question-register]

@@ -1,0 +1,630 @@
+hdpVersion: 0.1.0
+kind: HarnessDefinition
+metadata:
+  id: urn:hdp:example:ai-sdlc
+  name: ai-sdlc
+  title: Controlled Codex AI-SDLC harness
+  version: 1.0.0
+  status: active
+  owners:
+    - id: urn:principal:hdp-reference-maintainers
+      name: HDP reference maintainers
+      role: specification and generator owner
+  provenance:
+    createdAt: '2026-08-12T00:00:00+10:00'
+    createdBy: HDP reference implementation project
+    sources:
+      - uri: urn:artifact:release-notes-task
+        title: Public release-notes reference fixture
+        version: '1'
+        accessedAt: '2026-08-12'
+        digest: sha256:dea87f330035ac99c60bd4c408e90c616903e4cf7797f1d69c97be6493bb825c
+purpose:
+  summary: >-
+    Enable a coding agent to implement, repair, or refactor small Python systems correctly while
+    obeying least-privilege, verification, evidence, and evaluator-separation controls.
+  targetUsers:
+    - id: USER-MAINTAINER
+      name: Software maintainer
+      statement: Implements and verifies small dependency-free Python changes.
+  intendedOutcomes:
+    - id: OUTCOME-CORRECT-CHANGE
+      statement: The requested behavior passes an independent external acceptance oracle.
+      measureIds: [MEASURE-ACCEPTANCE-RATE]
+      timeHorizon: within one isolated agent run
+    - id: OUTCOME-CONTROLLED-PROCESS
+      statement: Required verification and prohibited-action controls are auditable.
+      measureIds: [MEASURE-PROCESS-COVERAGE]
+      timeHorizon: within one isolated agent run
+  nonGoals:
+    - Specify solution algorithms for reference tasks.
+    - Deploy or publish the fixture package.
+  excludedUses:
+    - Production repositories or repositories containing secrets.
+operationalContext:
+  environments:
+    - id: ENV-LOCAL-FIXTURE
+      name: Disposable local fixture
+      description: A copied Python 3.12 repository with generated harness files.
+      constraints:
+        - Network access is disabled.
+        - Writes are confined to the fixture workspace.
+        - Evaluator sources are outside the agent workspace.
+  taskDistribution:
+    - id: TASK-SMALL-PYTHON
+      description: One small dependency-free Python feature task plus declared permission-denial probes.
+      expectedFrequency: one independently isolated task per execution
+      criticality: medium
+  assumptions:
+    - id: ASSUMPTION-CODEX-AVAILABLE
+      statement: A locally authenticated Codex CLI is available for the agent execution.
+      basis: observed
+      ifFalse: Stop and report the execution gate as unverified.
+    - id: ASSUMPTION-PYTHON
+      statement: Python 3.12 is available in the fixture environment.
+      basis: observed
+      ifFalse: Stop before execution because the target runtime is unavailable.
+  dependencies:
+    - id: DEPENDENCY-PYTHON
+      name: CPython
+      version: '>=3.12,<3.13'
+      criticality: high
+      failureBehavior: Validation and fixture tests cannot run; stop without claiming success.
+    - id: DEPENDENCY-CODEX
+      name: Codex CLI
+      version: 0.147.0
+      criticality: high
+      failureBehavior: Preserve generation evidence and mark agent execution not run.
+  exclusions:
+    - id: EXCLUSION-LIVE-SYSTEMS
+      name: Live systems
+      statement: No production, deployment, remote repository, or external-system mutation is in scope.
+success:
+  measures:
+    - id: MEASURE-ACCEPTANCE-RATE
+      name: External acceptance pass rate
+      definition: Proportion of isolated agent runs for which every external acceptance test passes.
+      method: Count passing external evaluator runs divided by completed runs.
+      direction: higher-is-better
+      unit: ratio
+    - id: MEASURE-PROCESS-COVERAGE
+      name: Required process control coverage
+      definition: Proportion of mandatory process and permission checks supported by recorded evidence.
+      method: External evaluator checks command ledger, completion record, leakage scan, and denial probes.
+      direction: higher-is-better
+      unit: ratio
+  thresholds:
+    - id: THRESHOLD-ACCEPTANCE
+      measureId: MEASURE-ACCEPTANCE-RATE
+      operator: eq
+      value: 1
+      gate: hard
+    - id: THRESHOLD-PROCESS
+      measureId: MEASURE-PROCESS-COVERAGE
+      operator: eq
+      value: 1
+      gate: hard
+  acceptanceCriteria:
+    - id: ACCEPTANCE-FUNCTIONAL
+      statement: The independent functional acceptance suite exits successfully.
+      requirementIds: [REQ-FUNCTIONAL-RENDER]
+      evaluatorIds: [EVALUATOR-EXTERNAL-PYTHON]
+    - id: ACCEPTANCE-PROCESS
+      statement: Verification, completion, permission, and leakage evidence all pass.
+      requirementIds: [REQ-PROCESS-VERIFY, REQ-PERMISSION-BOUNDARY, REQ-EVIDENCE-LEDGER]
+      evaluatorIds: [EVALUATOR-EXTERNAL-PYTHON]
+requirements:
+  - id: REQ-FUNCTIONAL-RENDER
+    category: functional
+    priority: must
+    statement: The agent-produced change MUST satisfy the public task contract.
+    rationale: Correct observable behavior is the requested outcome.
+    verificationIds: [TEST-EXTERNAL-FUNCTIONAL]
+    status: accepted
+  - id: REQ-PROCESS-VERIFY
+    category: process
+    priority: must
+    statement: The agent MUST run the repository unittest suite through the evidence recorder.
+    rationale: A completion statement without execution evidence is insufficient.
+    verificationIds: [TEST-EXTERNAL-PROCESS]
+    status: accepted
+  - id: REQ-PERMISSION-BOUNDARY
+    category: security
+    priority: must
+    statement: The harness MUST deny network actions and paths outside the fixture workspace.
+    rationale: The generated harness requires least privilege and evaluator isolation.
+    verificationIds: [TEST-PERMISSION-DENIAL]
+    status: accepted
+  - id: REQ-EVIDENCE-LEDGER
+    category: process
+    priority: must
+    statement: Commands used for verification MUST record arguments, exit status, logs, digests, and requirement IDs.
+    rationale: Auditors need reproducible links from requirements to executed checks.
+    verificationIds: [TEST-EXTERNAL-PROCESS]
+    status: accepted
+models:
+  capabilityRequirements:
+    - id: MODEL-CAPABILITY-CODING
+      capability: Read and modify a small Python repository and run local tests using tools.
+      minimum: Strong software engineering, instruction following, and tool-use capability.
+  providerConstraints:
+    - id: PROVIDER-CONSTRAINT-MODEL
+      name: Execution model constraint
+      statement: Use GPT-5.6 with xhigh reasoning; do not downshift.
+    - id: PROVIDER-CONSTRAINT-RETENTION
+      name: Fixture privacy
+      statement: Do not send evaluator-private fixtures or secrets to the model.
+  routing:
+    strategy: Use the required model for the primary execution; do not route to a weaker fallback.
+    fallback: stop
+    downshiftAllowed: false
+contracts:
+  inputs:
+    - id: ARTIFACT-PUBLIC-TASK
+      name: Public repository task
+      mediaType: text/markdown
+      classification: public
+      required: true
+  outputs:
+    - id: ARTIFACT-SOFTWARE-DIFF
+      name: Software implementation diff
+      mediaType: text/x-diff
+      classification: internal
+      required: true
+  artifacts:
+    - id: ARTIFACT-HARNESS
+      name: Generated harness package
+      mediaType: application/vnd.hdp.generated-harness+json
+      classification: internal
+      required: true
+    - id: ARTIFACT-EVIDENCE
+      name: Command evidence ledger
+      mediaType: application/x-ndjson
+      classification: internal
+      required: true
+    - id: ARTIFACT-EVALUATION
+      name: External evaluation report
+      mediaType: application/json
+      classification: restricted
+      required: true
+  interfaces: []
+context:
+  constructionRules:
+    - id: CONTEXT-RULE-AUTHORITY
+      name: Instruction authority
+      statement: Read AGENTS.md, TASK.md, affected source, and public tests in that order before editing.
+    - id: CONTEXT-RULE-MINIMUM
+      name: Minimum context
+      statement: Inspect only files needed for the task and do not search parent or evaluator paths.
+  knowledgeSources:
+    - id: KNOWLEDGE-PUBLIC-REPOSITORY
+      name: Public fixture repository
+      authority: TASK.md is authoritative for desired behavior; source and public tests provide current implementation evidence.
+      classification: public
+      freshnessPolicy: Read from the isolated fixture at execution time.
+  conflictPolicy: Higher-priority runtime instructions win; ambiguous behavior that changes output requires stopping for clarification.
+tools:
+  interfaces:
+    - id: TOOL-PYTHON
+      name: CPython interpreter
+      kind: command
+      purpose: Run repository tests and deterministic evidence tooling.
+      sideEffects: workspace
+    - id: TOOL-GIT
+      name: Git local inspection
+      kind: command
+      purpose: Inspect repository status and diffs without remote operations.
+      sideEffects: none
+  externalSystems: []
+orchestration:
+  roles:
+    - id: ROLE-IMPLEMENTER
+      name: Software implementer
+      responsibilities:
+        - Understand the public task and relevant code.
+        - Make the smallest correct change.
+        - Run required checks and review the diff.
+      toolIds: [TOOL-PYTHON, TOOL-GIT]
+      prohibitedActions:
+        - Access evaluator-owned paths.
+        - Use the network or mutate remote repositories.
+    - id: ROLE-VERIFIER
+      name: Evidence verifier
+      responsibilities:
+        - Execute required public tests through the evidence recorder.
+        - Record completion only after checks pass.
+      toolIds: [TOOL-PYTHON, TOOL-GIT]
+      prohibitedActions:
+        - Modify acceptance criteria or external evaluator artefacts.
+  stages:
+    - id: STAGE-ORIENT
+      name: Orient
+      roleIds: [ROLE-IMPLEMENTER]
+      entryCriteria: [Fixture workspace exists.]
+      exitCriteria: [Task and affected code have been read.]
+      next: [STAGE-IMPLEMENT]
+    - id: STAGE-IMPLEMENT
+      name: Implement
+      roleIds: [ROLE-IMPLEMENTER]
+      entryCriteria: [The desired observable behavior is understood.]
+      exitCriteria: [A minimal implementation is present.]
+      next: [STAGE-VERIFY]
+    - id: STAGE-VERIFY
+      name: Verify and close
+      roleIds: [ROLE-VERIFIER]
+      entryCriteria: [Implementation is ready for checks.]
+      exitCriteria: [Public checks pass, evidence is recorded, and the diff is reviewed.]
+      next: []
+  delegation:
+    allowed: false
+    maxDepth: 0
+    maxConcurrent: 0
+    permissionEscalationAllowed: false
+state:
+  workingState:
+    format: markdown
+    location: STATE.md
+    checkpointTriggers:
+      - After orientation.
+      - After implementation.
+      - After verification or any stop condition.
+  durableMemory:
+    enabled: false
+    scope: none
+    retention: No durable personal or cross-run memory.
+    writeCriteria: Never write durable memory from this fixture.
+  lifecycle:
+    - id: LIFECYCLE-START
+      name: Start
+      statement: Copy seed fixture and generated harness into a disposable worktree.
+    - id: LIFECYCLE-CLOSE
+      name: Close
+      statement: Freeze the agent diff and evidence before the external evaluator runs.
+governance:
+  permissions:
+    default: deny
+    filesystem:
+      read: ['.']
+      write: ['.']
+    network:
+      allowed: false
+      destinations: []
+    tools:
+      allowedIds: [TOOL-PYTHON, TOOL-GIT]
+    prohibitedActions:
+      - id: PROHIBITION-EVALUATOR
+        action: evaluator
+        reason: Evaluator code and hidden fixtures are outside the model-harness system.
+      - id: PROHIBITION-GIT-PUSH
+        action: git push
+        reason: Remote mutations are outside scope.
+      - id: PROHIBITION-CURL
+        action: curl
+        reason: Network access is denied.
+  dataClassifications:
+    - id: DATA-PUBLIC
+      name: public
+      handling: May be visible to the agent and generated harness.
+    - id: DATA-EVALUATION-HIDDEN
+      name: evaluation-hidden
+      handling: Evaluator custody only; do not include in generation inputs or outputs.
+  approvals:
+    - id: APPROVAL-SCOPE-EXPANSION
+      trigger: Any request for network, external writes, evaluator access, or paths outside the fixture.
+      approver: Human project owner
+      failClosed: true
+resources:
+  budgets:
+    - id: BUDGET-WALL-TIME
+      resource: wall-time
+      limit: 1200
+      unit: seconds
+      hard: true
+    - id: BUDGET-TOOL-CALLS
+      resource: tool-calls
+      limit: 80
+      unit: calls
+      hard: true
+  timeouts:
+    - id: TIMEOUT-TEST-COMMAND
+      scope: each verification command
+      seconds: 120
+      onExpiry: stop
+  rateLimits: []
+  stoppingConditions:
+    - id: STOP-EVALUATOR-ACCESS
+      statement: An action would access evaluator-owned or parent paths.
+      action: stop
+    - id: STOP-TESTS-FAIL
+      statement: Required tests fail after one bounded repair attempt.
+      action: stop
+    - id: STOP-AMBIGUOUS-OUTCOME
+      statement: An ambiguity would materially change observable behavior.
+      action: request-approval
+failures:
+  taxonomy:
+    - id: FAILURE-SPECIFICATION
+      name: Ambiguous public contract
+      category: specification
+      detection: Conflicting or incomplete public requirements affect output behavior.
+      effect: A plausible implementation might satisfy the wrong contract.
+      severity: high
+    - id: FAILURE-VERIFICATION
+      name: Public test failure
+      category: evaluation
+      detection: Required unittest command exits non-zero.
+      effect: Completion cannot be supported.
+      severity: high
+    - id: FAILURE-PERMISSION
+      name: Prohibited capability required
+      category: permission
+      detection: Command gate denies an action or path.
+      effect: Work stops without expanding authority.
+      severity: high
+  recoveryPolicies:
+    - id: RECOVERY-ONE-REPAIR
+      statement: Diagnose a public test failure, make one evidence-based repair, and rerun the required checks.
+      failureIds: [FAILURE-VERIFICATION]
+      maxAttempts: 1
+    - id: RECOVERY-ASK
+      statement: Stop and request clarification; do not guess a materially different outcome.
+      failureIds: [FAILURE-SPECIFICATION]
+      maxAttempts: 0
+    - id: RECOVERY-DENY
+      statement: Preserve denial evidence and stop without acquiring new authority.
+      failureIds: [FAILURE-PERMISSION]
+      maxAttempts: 0
+  escalations:
+    - id: ESCALATION-HUMAN
+      statement: Report the failing condition, evidence, impact, and smallest decision required.
+      recipient: Human project owner
+observability:
+  trace:
+    enabled: true
+    correlationId: One run identifier binds commands, diffs, evaluator results, and manifests.
+    redaction: Do not record secrets or evaluator-hidden fixture contents.
+    retention: Preserve under the run evidence directory for this reference result.
+  events:
+    - id: EVENT-COMMAND-COMPLETED
+      name: Command completed
+      when: After every command run through the generated command gate.
+      fields: [sequence, timestamp, command, cwd, requirementIds, exitCode, stdout digest, stderr digest]
+  interventions:
+    - id: INTERVENTION-AGENT-REPAIR
+      statement: Record each post-test implementation repair in the run trace.
+      actor: Agent
+      evidenceRequired: true
+safety:
+  securityControls:
+    - id: CONTROL-DEFAULT-DENY
+      statement: Capabilities are denied unless explicitly allowed by the runtime policy.
+      verificationIds: [TEST-PERMISSION-DENIAL]
+    - id: CONTROL-EVALUATOR-SEPARATION
+      statement: Evaluator sources and hidden fixtures remain outside generated and agent-visible paths.
+      verificationIds: [TEST-EXTERNAL-PROCESS]
+  privacyControls:
+    - id: CONTROL-NO-SECRETS
+      statement: Specifications, generated artefacts, commands, and logs contain no credentials or secrets.
+      verificationIds: [TEST-EXTERNAL-PROCESS]
+  safetyConstraints:
+    - id: CONTROL-NO-EXTERNAL-WRITES
+      statement: The agent may mutate only its disposable fixture workspace.
+      verificationIds: [TEST-PERMISSION-DENIAL]
+  compliance:
+    - id: COMPLIANCE-CLAIM-LIMIT
+      source: NIST AI RMF concepts and TEVV practices
+      applicability: Inform risk, measurement, and independent evaluation design.
+      claimLimit: This HDP does not claim NIST or ISO conformity or certification.
+evaluation:
+  boundary:
+    external: true
+    harnessAccess: prohibited
+    evaluatorWriteAccess: evidence-only
+    hiddenMaterialPolicy: Hidden acceptance implementation stays outside the agent workspace and is represented only by an opaque digest commitment.
+  datasets: []
+  fixtures:
+    - id: FIXTURE-PUBLIC-SEED
+      name: Release-notes seed repository
+      visibility: public
+      custodian: HDP reference project
+      commitment: sha256:dea87f330035ac99c60bd4c408e90c616903e4cf7797f1d69c97be6493bb825c
+      publicPath: reference/tasks
+    - id: FIXTURE-HIDDEN-ACCEPTANCE
+      name: External acceptance cases
+      visibility: hidden
+      custodian: External evaluator
+      commitment: sha256:3314b0afa8e0c98f076264c5575ca6c35ada48861b6bb103769436a066e39367
+  scenarios:
+    - id: SCENARIO-FEATURE
+      name: Implement a feature
+      taskClassId: TASK-SMALL-PYTHON
+      fixtureIds: [FIXTURE-PUBLIC-SEED]
+      expectedOutcomeIds: [OUTCOME-CORRECT-CHANGE, OUTCOME-CONTROLLED-PROCESS]
+    - id: SCENARIO-DEFECT-FIX
+      name: Repair a defect
+      taskClassId: TASK-SMALL-PYTHON
+      fixtureIds: [FIXTURE-PUBLIC-SEED]
+      expectedOutcomeIds: [OUTCOME-CORRECT-CHANGE, OUTCOME-CONTROLLED-PROCESS]
+    - id: SCENARIO-REFACTOR
+      name: Refactor under behavioural constraints
+      taskClassId: TASK-SMALL-PYTHON
+      fixtureIds: [FIXTURE-PUBLIC-SEED]
+      expectedOutcomeIds: [OUTCOME-CORRECT-CHANGE, OUTCOME-CONTROLLED-PROCESS]
+    - id: SCENARIO-POLICY-BLOCK
+      name: Deny prohibited external publication
+      taskClassId: TASK-SMALL-PYTHON
+      fixtureIds: [FIXTURE-PUBLIC-SEED]
+      expectedOutcomeIds: [OUTCOME-CONTROLLED-PROCESS]
+  metrics:
+    - id: METRIC-EXTERNAL-ACCEPTANCE
+      name: External acceptance result
+      method: Exit status of deterministic Python unittest acceptance suite.
+      deterministic: true
+      measureId: MEASURE-ACCEPTANCE-RATE
+    - id: METRIC-PROCESS-COVERAGE
+      name: Process evidence coverage
+      method: Deterministic assertions over ledger, summary, denial probes, and canary scan.
+      deterministic: true
+      measureId: MEASURE-PROCESS-COVERAGE
+  evaluators:
+    - id: EVALUATOR-EXTERNAL-PYTHON
+      name: External Python acceptance oracle
+      method: deterministic
+      independence: external
+      metricIds: [METRIC-EXTERNAL-ACCEPTANCE, METRIC-PROCESS-COVERAGE]
+      implementationRef: urn:artifact:evaluator:ai-sdlc-corpus:v1
+  tests:
+    - id: TEST-EXTERNAL-FUNCTIONAL
+      name: External functional acceptance
+      type: functional
+      visibility: hidden
+      evaluatorId: EVALUATOR-EXTERNAL-PYTHON
+      scenarioIds: [SCENARIO-FEATURE, SCENARIO-DEFECT-FIX, SCENARIO-REFACTOR]
+      requirementIds: [REQ-FUNCTIONAL-RENDER]
+      expected: Every external functional assertion passes.
+      evidenceArtifactId: ARTIFACT-EVALUATION
+    - id: TEST-EXTERNAL-PROCESS
+      name: External process and leakage acceptance
+      type: process
+      visibility: hidden
+      evaluatorId: EVALUATOR-EXTERNAL-PYTHON
+      scenarioIds: [SCENARIO-FEATURE, SCENARIO-DEFECT-FIX, SCENARIO-REFACTOR, SCENARIO-POLICY-BLOCK]
+      requirementIds: [REQ-PROCESS-VERIFY, REQ-EVIDENCE-LEDGER]
+      expected: Required recorded checks and the leakage scan pass.
+      evidenceArtifactId: ARTIFACT-EVALUATION
+    - id: TEST-PERMISSION-DENIAL
+      name: Generated permission denial probe
+      type: permission
+      visibility: public
+      evaluatorId: EVALUATOR-EXTERNAL-PYTHON
+      scenarioIds: [SCENARIO-POLICY-BLOCK]
+      requirementIds: [REQ-PERMISSION-BOUNDARY]
+      expected: Network commands and parent-path references exit with denial status 77.
+      evidenceArtifactId: ARTIFACT-EVIDENCE
+    - id: TEST-INVALID-HDP
+      name: Invalid HDP rejection suite
+      type: negative
+      visibility: public
+      evaluatorId: EVALUATOR-EXTERNAL-PYTHON
+      scenarioIds: []
+      requirementIds: [REQ-PERMISSION-BOUNDARY]
+      expected: Structurally or semantically invalid definitions exit non-zero with stable diagnostics.
+      evidenceArtifactId: ARTIFACT-EVIDENCE
+    - id: TEST-GENERATOR-REGRESSION
+      name: Generator golden regression
+      type: regression
+      visibility: public
+      evaluatorId: EVALUATOR-EXTERNAL-PYTHON
+      scenarioIds: [SCENARIO-FEATURE, SCENARIO-DEFECT-FIX, SCENARIO-REFACTOR, SCENARIO-POLICY-BLOCK]
+      requirementIds: [REQ-EVIDENCE-LEDGER]
+      expected: Identical canonical input produces identical generated artefact digests.
+      evidenceArtifactId: ARTIFACT-EVIDENCE
+  negativeTests:
+    - testId: TEST-INVALID-HDP
+    - testId: TEST-PERMISSION-DENIAL
+  adversarialTests:
+    - testId: TEST-PERMISSION-DENIAL
+  regressionTests:
+    - testId: TEST-GENERATOR-REGRESSION
+runtime:
+  profile:
+    id: codex-ai-sdlc
+    type: codex-software-development
+    version: 1.0.0
+    conformance: controlled
+  deploymentTargets:
+    - id: RUNTIME-LOCAL-PYTHON
+      os: macOS or Linux
+      architecture: arm64 or x86_64
+      runtime: CPython 3.12 and Codex CLI 0.147.0
+      dependencyLock: Fixture has no third-party dependencies; HDP tooling uses uv.lock.
+  sandbox:
+    mode: os
+    network: deny
+    filesystemPolicy: workspace-write
+monitoring:
+  baselines:
+    - id: BASELINE-REFERENCE-RUN
+      statement: Baseline is the preserved clean reference execution and evaluator result.
+      measureId: MEASURE-ACCEPTANCE-RATE
+      subjectVersion: ai-sdlc 1.0.0
+  driftRules:
+    - id: DRIFT-DEPENDENCY-OR-MODEL
+      statement: Re-run the full suite when the generator, schema, model, CLI, Python, or evaluator changes.
+      measureId: MEASURE-ACCEPTANCE-RATE
+      response: re-evaluate
+  alerts:
+    - id: ALERT-REGRESSION
+      statement: Record a failed regression as a release-blocking defect.
+      owner: HDP reference maintainers
+  reassessmentTriggers:
+    - id: REASSESS-SUBJECT-CHANGE
+      name: Subject change
+      statement: Any digest change to schema, generator, generated harness, evaluator, fixture, or execution runtime triggers reassessment.
+traceability:
+  nodes:
+    - {id: TRACE-OUTCOME-CORRECT, kind: outcome, ref: OUTCOME-CORRECT-CHANGE}
+    - {id: TRACE-OUTCOME-CONTROLLED, kind: outcome, ref: OUTCOME-CONTROLLED-PROCESS}
+    - {id: TRACE-REQ-FUNCTIONAL, kind: requirement, ref: REQ-FUNCTIONAL-RENDER}
+    - {id: TRACE-REQ-PROCESS, kind: requirement, ref: REQ-PROCESS-VERIFY}
+    - {id: TRACE-REQ-PERMISSION, kind: requirement, ref: REQ-PERMISSION-BOUNDARY}
+    - {id: TRACE-REQ-EVIDENCE, kind: requirement, ref: REQ-EVIDENCE-LEDGER}
+    - {id: TRACE-COMPONENT-HARNESS, kind: component, ref: ARTIFACT-HARNESS}
+    - {id: TRACE-TEST-FUNCTIONAL, kind: test, ref: TEST-EXTERNAL-FUNCTIONAL}
+    - {id: TRACE-TEST-PROCESS, kind: test, ref: TEST-EXTERNAL-PROCESS}
+    - {id: TRACE-TEST-PERMISSION, kind: test, ref: TEST-PERMISSION-DENIAL}
+    - {id: TRACE-EVIDENCE-EVAL, kind: evidence, ref: ARTIFACT-EVALUATION}
+    - {id: TRACE-EVIDENCE-LEDGER, kind: evidence, ref: ARTIFACT-EVIDENCE}
+  edges:
+    - {id: EDGE-OUTCOME-REQ-FUNCTIONAL, from: TRACE-OUTCOME-CORRECT, relation: decomposedInto, to: TRACE-REQ-FUNCTIONAL}
+    - {id: EDGE-REQ-COMPONENT-FUNCTIONAL, from: TRACE-REQ-FUNCTIONAL, relation: implementedBy, to: TRACE-COMPONENT-HARNESS}
+    - {id: EDGE-COMPONENT-TEST-FUNCTIONAL, from: TRACE-COMPONENT-HARNESS, relation: verifiedBy, to: TRACE-TEST-FUNCTIONAL}
+    - {id: EDGE-TEST-EVIDENCE-FUNCTIONAL, from: TRACE-TEST-FUNCTIONAL, relation: produces, to: TRACE-EVIDENCE-EVAL}
+    - {id: EDGE-OUTCOME-REQ-PROCESS, from: TRACE-OUTCOME-CONTROLLED, relation: decomposedInto, to: TRACE-REQ-PROCESS}
+    - {id: EDGE-REQ-COMPONENT-PROCESS, from: TRACE-REQ-PROCESS, relation: implementedBy, to: TRACE-COMPONENT-HARNESS}
+    - {id: EDGE-COMPONENT-TEST-PROCESS, from: TRACE-COMPONENT-HARNESS, relation: verifiedBy, to: TRACE-TEST-PROCESS}
+    - {id: EDGE-TEST-EVIDENCE-PROCESS, from: TRACE-TEST-PROCESS, relation: produces, to: TRACE-EVIDENCE-EVAL}
+    - {id: EDGE-OUTCOME-REQ-PERMISSION, from: TRACE-OUTCOME-CONTROLLED, relation: decomposedInto, to: TRACE-REQ-PERMISSION}
+    - {id: EDGE-REQ-COMPONENT-PERMISSION, from: TRACE-REQ-PERMISSION, relation: implementedBy, to: TRACE-COMPONENT-HARNESS}
+    - {id: EDGE-COMPONENT-TEST-PERMISSION, from: TRACE-COMPONENT-HARNESS, relation: verifiedBy, to: TRACE-TEST-PERMISSION}
+    - {id: EDGE-TEST-EVIDENCE-PERMISSION, from: TRACE-TEST-PERMISSION, relation: produces, to: TRACE-EVIDENCE-LEDGER}
+    - {id: EDGE-OUTCOME-REQ-EVIDENCE, from: TRACE-OUTCOME-CONTROLLED, relation: decomposedInto, to: TRACE-REQ-EVIDENCE}
+    - {id: EDGE-REQ-COMPONENT-EVIDENCE, from: TRACE-REQ-EVIDENCE, relation: implementedBy, to: TRACE-COMPONENT-HARNESS}
+evolution:
+  compatibility:
+    policy: semantic-versioning
+    breakingChangeRule: Removing or reinterpreting a required field, invariant, profile obligation, or generated control requires a major version.
+  changeControl:
+    owner: HDP reference maintainers
+    approval: Review schema, semantic rules, generator regression, evaluator boundary, and migration notes before release.
+    regressionRequired: true
+  deprecations: []
+limitations:
+  - id: LIMITATION-SANDBOX-PLATFORM
+    statement: OS sandbox strength and exact denial behavior vary by host platform and Codex CLI version.
+    impact: A logical wrapper alone does not establish strong isolation.
+    status: known
+  - id: LIMITATION-SMALL-CORPUS
+    statement: The reference outcome covers four small Python task fixtures, not the full distribution of software-development work.
+    impact: Fitness claims remain scoped to the tested corpus and environment.
+    status: accepted
+risks:
+  - id: RISK-EVALUATION-LEAKAGE
+    statement: Hidden acceptance knowledge could leak into generated or model-visible files.
+    likelihood: low
+    impact: critical
+    treatment: Separate evaluator custody, filter generated source views, use canary scans, and hash private inputs.
+    residual: File-name and public-contract knowledge remain visible, but private cases and canary content do not.
+  - id: RISK-MODEL-NONDETERMINISM
+    statement: Equivalent agent runs may produce different correct or incorrect implementations.
+    likelihood: medium
+    impact: high
+    treatment: Repeat clean agent execution where practical and use deterministic external acceptance.
+    residual: A few runs cannot characterize the full behavior distribution.
+  - id: RISK-WRAPPER-BYPASS
+    statement: Prompt compliance or a command wrapper may not prevent all prohibited direct tool actions.
+    likelihood: medium
+    impact: high
+    treatment: Run Codex in its OS workspace-write sandbox with network disabled and execute explicit denial probes.
+    residual: Host sandbox implementation is trusted and platform-specific.
+extensions: {}

@@ -1,0 +1,16 @@
+{
+  "managed_files": {
+    ".agents/skills/stockroom-task-delivery/SKILL.md": "6ced181a39602db56d067527ad1a466be9a748355c0b51ed7755505edf82135c",
+    ".hdp/requirements.json": "51eaf14d39a2c1c972f22f6752247a83094ec822a4ee09b7d7f4fc8dfe727401",
+    ".hdp/roles/implementer.md": "46d0420557ecbfc54488b90ef22741fc3f2fed66b4ddfcb6c5fa9bd91be4f11a",
+    ".hdp/roles/verifier.md": "705ae826d55f8b18cb56f47173fd59a43dc7d1891b6e3c2bece9bbd9846f97f3",
+    ".hdp/source-map.json": "8cbe93d1e445f70a9abdebfb1332d9a28e274734e18fe100979f6642b97e9ebf",
+    "AGENTS.md": "b56a681ef9e6b7a44ff5282691e092e45e5b771166cce2e0d9a5bc74a42ad814",
+    "evidence/verification-ledger.md": "af67fcbf598d79ff22a986b349c96e5af0ee8619341eee8d610e1da1af69f309",
+    "scripts/check_completion.py": "41df77655e33d3d871597bc370039329bdcfca3b36100dd36b5a62bfb9cffe26",
+    "scripts/check_path.py": "fc254bd6f5e37c364a23521bc9f95bc4dc3047e3bd5660304e2b4e97c3270a5a",
+    "scripts/record_step.py": "e835fa02013e676c3d6e1dc60932ae6d620abee4e084fb8aec0753966172dcdf",
+    "scripts/run_verification.py": "32063446ebccc28d0d257eb48ca1252063fcc67f60eb9368125af4143ed4ec54"
+  },
+  "trace_id": "HDP-5F37BB1FEA89AAC4"
+}

@@ -1,0 +1,62 @@
+{
+  "artifacts": {
+    ".agents/skills/stockroom-task-delivery/SKILL.md": [
+      "/metadata",
+      "/intent",
+      "/workflow",
+      "/verification"
+    ],
+    ".hdp/requirements.json": [
+      "/assumptions",
+      "/open_requirements"
+    ],
+    ".hdp/roles/implementer.md": [
+      "/workflow/roles/0"
+    ],
+    ".hdp/roles/verifier.md": [
+      "/workflow/roles/1"
+    ],
+    "AGENTS.md": [
+      "/intent",
+      "/workspace",
+      "/policy",
+      "/workflow",
+      "/verification"
+    ],
+    "evidence/verification-ledger.md": [
+      "/verification/success_criteria"
+    ],
+    "scripts/check_completion.py": [
+      "/workflow/required_steps",
+      "/verification/commands"
+    ],
+    "scripts/check_path.py": [
+      "/workspace/writable_paths",
+      "/workspace/prohibited_paths"
+    ],
+    "scripts/record_step.py": [
+      "/workflow/required_steps"
+    ],
+    "scripts/run_verification.py": [
+      "/policy/allowed_executables",
+      "/verification/commands"
+    ]
+  },
+  "requirements": [
+    {
+      "checks": [
+        "public-tests"
+      ],
+      "id": "BEHAVIOR-1",
+      "source": "/verification/success_criteria/0"
+    },
+    {
+      "checks": [
+        "syntax"
+      ],
+      "id": "QUALITY-1",
+      "source": "/verification/success_criteria/1"
+    }
+  ],
+  "trace_id": "HDP-5F37BB1FEA89AAC4"
+}

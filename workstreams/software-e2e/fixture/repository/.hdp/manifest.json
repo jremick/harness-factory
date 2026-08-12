@@ -1,0 +1,114 @@
+{
+  "definition": {
+    "sha256": "5f37bb1fea89aac4b098d537903564e0b652a252599653ae3105e85232789b00",
+    "source": "harness.yaml"
+  },
+  "extension_paths": [
+    "AGENTS.local.md",
+    ".hdp/manual"
+  ],
+  "format_version": 1,
+  "generator": {
+    "name": "hdp-software-reference",
+    "version": "0.1.0"
+  },
+  "managed_files": [
+    {
+      "path": ".agents/skills/stockroom-task-delivery/SKILL.md",
+      "sha256": "6ced181a39602db56d067527ad1a466be9a748355c0b51ed7755505edf82135c",
+      "source_pointers": [
+        "/metadata",
+        "/intent",
+        "/workflow",
+        "/verification"
+      ]
+    },
+    {
+      "path": ".hdp/requirements.json",
+      "sha256": "51eaf14d39a2c1c972f22f6752247a83094ec822a4ee09b7d7f4fc8dfe727401",
+      "source_pointers": [
+        "/assumptions",
+        "/open_requirements"
+      ]
+    },
+    {
+      "path": ".hdp/roles/implementer.md",
+      "sha256": "46d0420557ecbfc54488b90ef22741fc3f2fed66b4ddfcb6c5fa9bd91be4f11a",
+      "source_pointers": [
+        "/workflow/roles/0"
+      ]
+    },
+    {
+      "path": ".hdp/roles/verifier.md",
+      "sha256": "705ae826d55f8b18cb56f47173fd59a43dc7d1891b6e3c2bece9bbd9846f97f3",
+      "source_pointers": [
+        "/workflow/roles/1"
+      ]
+    },
+    {
+      "path": ".hdp/source-map.json",
+      "sha256": "8cbe93d1e445f70a9abdebfb1332d9a28e274734e18fe100979f6642b97e9ebf",
+      "source_pointers": [
+        "/verification/success_criteria",
+        "/workflow",
+        "/workspace"
+      ]
+    },
+    {
+      "path": "AGENTS.md",
+      "sha256": "b56a681ef9e6b7a44ff5282691e092e45e5b771166cce2e0d9a5bc74a42ad814",
+      "source_pointers": [
+        "/intent",
+        "/workspace",
+        "/policy",
+        "/workflow",
+        "/verification"
+      ]
+    },
+    {
+      "path": "evidence/verification-ledger.md",
+      "sha256": "af67fcbf598d79ff22a986b349c96e5af0ee8619341eee8d610e1da1af69f309",
+      "source_pointers": [
+        "/verification/success_criteria"
+      ]
+    },
+    {
+      "path": "scripts/check_completion.py",
+      "sha256": "41df77655e33d3d871597bc370039329bdcfca3b36100dd36b5a62bfb9cffe26",
+      "source_pointers": [
+        "/workflow/required_steps",
+        "/verification/commands"
+      ]
+    },
+    {
+      "path": "scripts/check_path.py",
+      "sha256": "fc254bd6f5e37c364a23521bc9f95bc4dc3047e3bd5660304e2b4e97c3270a5a",
+      "source_pointers": [
+        "/workspace/writable_paths",
+        "/workspace/prohibited_paths"
+      ]
+    },
+    {
+      "path": "scripts/record_step.py",
+      "sha256": "e835fa02013e676c3d6e1dc60932ae6d620abee4e084fb8aec0753966172dcdf",
+      "source_pointers": [
+        "/workflow/required_steps"
+      ]
+    },
+    {
+      "path": "scripts/run_verification.py",
+      "sha256": "32063446ebccc28d0d257eb48ca1252063fcc67f60eb9368125af4143ed4ec54",
+      "source_pointers": [
+        "/policy/allowed_executables",
+        "/verification/commands"
+      ]
+    }
+  ],
+  "policy_summary": {
+    "external_writes": "deny",
+    "network": "deny",
+    "parent_and_sibling_access": "deny",
+    "secrets": "deny"
+  },
+  "trace_id": "HDP-5F37BB1FEA89AAC4"
+}

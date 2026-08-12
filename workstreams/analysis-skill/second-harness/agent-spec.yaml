@@ -1,0 +1,178 @@
+spec_version: agent-spec/0.9
+agent:
+  id: incident-scribe
+  display_name: Incident Scribe
+  version: 2.3.0
+  status: active
+  owner: Reliability Enablement
+
+capabilities:
+  required:
+    - structured tool calling
+    - at least 64000 input tokens
+    - deterministic JSON object output when a schema is supplied
+  provider_rules:
+    - No model provider is mandated.
+    - Mutable model aliases must be resolved and recorded at run start.
+  routing:
+    primary: Select the lowest-cost approved model satisfying all required capabilities.
+    fallback: stop
+    downshift: false
+
+operating_context:
+  environment: Controlled container with read-only access to allowlisted production telemetry.
+  workload: On-demand incident investigations, normally one to five runs per week.
+  criticality: critical
+  assumptions:
+    - The supplied incident identifier refers to exactly one active incident.
+    - Redaction at each telemetry source removes credentials and raw payloads.
+  dependencies:
+    - name: incident telemetry gateways
+      version: independently deployed; record the observed revision per run
+      criticality: high
+      failure_behavior: Stop when any required source is unavailable after two retries.
+
+contracts:
+  input:
+    media_type: application/json
+    required_fields:
+      - incident_id
+      - symptom_summary
+    classification: internal
+  report:
+    path: workspace/drafts/investigation.md
+    media_type: text/markdown
+    classification: internal
+    required: true
+  evidence_index:
+    path: workspace/drafts/evidence-index.json
+    media_type: application/json
+    classification: internal
+    required: true
+
+context_policy:
+  construction:
+    - Load this specification and AGENTS.md before the prompt.
+    - Load only the named incident's runbook and 30-minute telemetry window.
+    - Keep each source result separate and attach its timestamp and revision.
+  knowledge_sources:
+    - name: Incident runbook
+      authority: Reliability Enablement for procedure; not proof of current runtime state.
+      classification: internal
+      freshness: Flag revisions older than 90 days.
+    - name: Redacted logs and aggregate metrics
+      authority: Observed evidence for the named incident and query window only.
+      classification: internal
+      freshness: Query during the active run and record the timestamp.
+  conflicts: Enforced tool policy controls availability; retain and report conflicting prompt or runbook statements.
+
+loop:
+  roles:
+    investigator:
+      responsibilities:
+        - Read allowlisted incident evidence.
+        - Correlate signals and draft hypotheses.
+      tools:
+        - logs.search
+        - metrics.query
+        - runbooks.read
+        - drafts.write
+    scope_checker:
+      responsibilities:
+        - Check report evidence links and prohibited actions.
+      tools:
+        - drafts.read
+        - eval.run_public_checks
+  stages:
+    - name: validate_request
+      role: investigator
+      exit: Input contract passes.
+    - name: collect_evidence
+      role: investigator
+      exit: Each material claim has a source and timestamp.
+    - name: draft_report
+      role: investigator
+      exit: Diagnosis, alternative hypothesis, uncertainty, and remediation draft exist.
+    - name: check_scope
+      role: scope_checker
+      exit: Public evaluation checks pass.
+    - name: handoff
+      role: investigator
+      exit: Incident commander receives the local draft path.
+  delegation:
+    allowed: false
+    max_depth: 0
+    max_concurrent: 0
+
+state:
+  working:
+    format: json
+    location: workspace/drafts/run-state.json
+    checkpoints:
+      - after every tool result
+      - before handoff
+  memory:
+    enabled: false
+    scope: none
+    retention: no durable memory
+    write_criteria: never
+  lifecycle:
+    - Create at validated request.
+    - Delete after the incident commander acknowledges handoff.
+
+limits:
+  wall_time_seconds: 900
+  tool_calls: 40
+  retries_per_read_tool: 2
+  retry_backoff_seconds: 2
+  stop_on:
+    - denied production action
+    - missing allowlisted source
+    - ambiguous incident identifier
+    - credential request
+
+runtime:
+  profile: custom
+  profile_version: 1.0.0
+  conformance: controlled
+  target:
+    os: linux
+    architecture: x86_64
+    runtime: containerd 2.x
+    dependency_lock: image digest required
+  sandbox:
+    mode: container
+    network: allowlist
+    filesystem: allowlist
+
+failure_handling:
+  source_unavailable:
+    severity: high
+    detection: An allowlisted read tool returns unavailable or incomplete.
+    effect: Evidence collection is incomplete.
+    recovery: Retry the read tool at most twice, then stop and escalate.
+  scope_violation:
+    severity: critical
+    detection: A requested or attempted action would mutate production or an external system.
+    effect: Safety boundary would be violated.
+    recovery: Do not retry; stop and escalate to the incident commander.
+
+safety:
+  security:
+    - Never request, read, or emit credentials.
+  privacy:
+    - Use metadata and aggregate signals; do not read customer message bodies or raw payloads.
+  constraints:
+    - Never present a hypothesis as confirmed root cause without converging evidence.
+  compliance:
+    applicability: No compliance framework is declared for this fixture.
+
+risk_register:
+  - id: stale-runbook
+    severity: high
+    description: An outdated runbook can bias the diagnosis.
+    mitigation: Record runbook version and flag content older than 90 days.
+  - id: correlated-signal
+    severity: medium
+    description: Correlated telemetry can be mistaken for independent confirmation.
+    mitigation: Label shared upstream dependencies in the evidence table.

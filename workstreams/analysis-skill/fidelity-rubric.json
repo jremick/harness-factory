@@ -1,0 +1,110 @@
+{
+  "rubricVersion": "1.0.0",
+  "title": "Evidence-first HDP reconstruction fidelity rubric",
+  "purpose": "Score field coverage, semantic fidelity, epistemic restraint, evidence quality, and confidence calibration without exposing gold facts to the reconstruction agent.",
+  "contentCategories": {
+    "exact_match": {
+      "credit": 1.0,
+      "definition": "The reconstructed value is JSON-equal to the expected value."
+    },
+    "normalized_match": {
+      "credit": 0.95,
+      "definition": "The values differ only by the fact's declared reversible normalizer."
+    },
+    "acceptable_inferred_difference": {
+      "credit": 0.65,
+      "definition": "The value is an evaluator-listed alternative, is marked inferred, stays within the inferred confidence cap, and requires human confirmation."
+    },
+    "false_assertion": {
+      "credit": 0.0,
+      "penalty": 1.0,
+      "definition": "The reconstruction asserts a value that conflicts with or is unsupported by the expected evidence state."
+    },
+    "correct_unknown": {
+      "credit": 1.0,
+      "definition": "The source does not establish the value and the reconstruction explicitly records unknown, missing evidence, and the required confirmation state without inventing an HDP value."
+    },
+    "missing_field": {
+      "credit": 0.0,
+      "definition": "An evidenced expected field is absent, or an absent field has no explicit unknown evidence record."
+    }
+  },
+  "scoreWeights": {
+    "content": 0.7,
+    "evidenceContract": 0.2,
+    "confidenceCalibration": 0.1
+  },
+  "confidenceBands": {
+    "declared": [0.8, 1.0],
+    "observed": [0.75, 1.0],
+    "inferred": [0.3, 0.79],
+    "unknown": [0.0, 0.0]
+  },
+  "normalizers": {
+    "exact": "No transformation.",
+    "text": "Unicode NFC, trim leading/trailing whitespace, and collapse internal whitespace.",
+    "casefold-text": "Apply text normalization and Unicode case-folding.",
+    "path": "Apply text normalization, convert backslashes to slashes, and remove a leading ./.",
+    "unordered-scalars": "Compare scalar arrays as sorted canonical JSON multisets.",
+    "semantic-json": "Sort object keys; sort object arrays by id when every member has an id; sort scalar arrays as canonical JSON multisets."
+  },
+  "wholeDocumentComparison": {
+    "exact": "Canonical JSON equality after only evaluator-declared ignore pointers are removed.",
+    "normalized": "Semantic JSON equality after evaluator-declared ignore pointers are removed; use only when source order is non-normative.",
+    "ignorePolicy": "Ignore only reconstruction metadata or generator-documented non-source material. Never ignore a mismatch merely because it lowers the score."
+  },
+  "requiredEvidenceRecordFields": [
+    "field",
+    "value",
+    "claimClass",
+    "epistemicStatus",
+    "confidence",
+    "sources",
+    "contradictions",
+    "missingEvidence",
+    "humanConfirmation"
+  ],
+  "allowedClaimClasses": [
+    "evidenced-intended-outcome",
+    "operational-behavior",
+    "inferred-intent",
+    "administrative-metadata",
+    "absent-or-unknowable"
+  ],
+  "coverageGroups": [
+    {"id": "metadata", "prefixes": ["/hdpVersion", "/kind", "/metadata"], "weight": 1, "critical": false, "minimumFacts": 1},
+    {"id": "purpose", "prefixes": ["/purpose"], "weight": 5, "critical": true, "minimumFacts": 2},
+    {"id": "operational-context", "prefixes": ["/operationalContext"], "weight": 2, "critical": false, "minimumFacts": 1},
+    {"id": "success", "prefixes": ["/success"], "weight": 4, "critical": true, "minimumFacts": 1},
+    {"id": "requirements", "prefixes": ["/requirements"], "weight": 4, "critical": true, "minimumFacts": 1},
+    {"id": "models", "prefixes": ["/models"], "weight": 2, "critical": false, "minimumFacts": 1},
+    {"id": "contracts", "prefixes": ["/contracts"], "weight": 2, "critical": false, "minimumFacts": 1},
+    {"id": "context", "prefixes": ["/context"], "weight": 2, "critical": false, "minimumFacts": 1},
+    {"id": "tools", "prefixes": ["/tools"], "weight": 4, "critical": true, "minimumFacts": 1},
+    {"id": "orchestration", "prefixes": ["/orchestration"], "weight": 3, "critical": false, "minimumFacts": 1},
+    {"id": "state", "prefixes": ["/state"], "weight": 2, "critical": false, "minimumFacts": 1},
+    {"id": "governance", "prefixes": ["/governance"], "weight": 5, "critical": true, "minimumFacts": 2},
+    {"id": "resources", "prefixes": ["/resources"], "weight": 3, "critical": true, "minimumFacts": 1},
+    {"id": "failures", "prefixes": ["/failures"], "weight": 3, "critical": false, "minimumFacts": 1},
+    {"id": "observability", "prefixes": ["/observability"], "weight": 2, "critical": false, "minimumFacts": 1},
+    {"id": "safety", "prefixes": ["/safety"], "weight": 5, "critical": true, "minimumFacts": 1},
+    {"id": "evaluation", "prefixes": ["/evaluation"], "weight": 5, "critical": true, "minimumFacts": 2},
+    {"id": "runtime", "prefixes": ["/runtime"], "weight": 3, "critical": true, "minimumFacts": 1},
+    {"id": "monitoring", "prefixes": ["/monitoring"], "weight": 2, "critical": false, "minimumFacts": 1},
+    {"id": "traceability", "prefixes": ["/traceability"], "weight": 4, "critical": true, "minimumFacts": 1},
+    {"id": "evolution", "prefixes": ["/evolution"], "weight": 2, "critical": false, "minimumFacts": 1},
+    {"id": "limitations", "prefixes": ["/limitations"], "weight": 2, "critical": false, "minimumFacts": 1},
+    {"id": "risks", "prefixes": ["/risks"], "weight": 4, "critical": true, "minimumFacts": 1}
+  ],
+  "gates": {
+    "minimumOverallScore": 0.85,
+    "minimumContentScore": 0.85,
+    "minimumEvidenceContractScore": 0.9,
+    "minimumConfidenceCalibrationScore": 0.8,
+    "maximumFalseAssertions": 0,
+    "maximumCriticalFalseAssertions": 0,
+    "minimumCoverage": 0.95,
+    "requireGoldGroupCoverage": true,
+    "requireSchemaValidationWhenExpected": true
+  }
+}

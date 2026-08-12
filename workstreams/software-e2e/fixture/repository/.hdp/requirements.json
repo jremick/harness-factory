@@ -1,0 +1,8 @@
+{
+  "assumptions": [
+    "Python 3.11 or newer is available as python3.",
+    "The repository public tests are safe to execute without network or credentials."
+  ],
+  "open_requirements": [],
+  "trace_id": "HDP-5F37BB1FEA89AAC4"
+}

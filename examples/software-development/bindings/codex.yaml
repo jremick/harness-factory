@@ -1,0 +1,14 @@
+bindingVersion: 0.1.0
+kind: TargetBinding
+target: codex
+adapterVersion: 0.1.0
+settings:
+  model: gpt-5.6-sol
+  reasoningEffort: xhigh
+  approvalPolicy: never
+  sandboxMode: workspace-write
+externallyEnforcedResources: [environment, filesystem, network, process, wall-time]
+commandBindings:
+  TOOL-PYTHON: [python, python3]
+  TOOL-GIT: [git]
+mcpServers: []

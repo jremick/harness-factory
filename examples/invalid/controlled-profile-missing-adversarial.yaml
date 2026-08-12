@@ -1,0 +1,5 @@
+# Intentionally invalid semantic mutation of the controlled full example.
+mutation:
+  pointer: /evaluation/adversarialTests
+  value: []
+expectedDiagnostic: HDP-SEM-PROFILE-OBLIGATION

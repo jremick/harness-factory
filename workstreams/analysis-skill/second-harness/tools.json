@@ -1,0 +1,87 @@
+{
+  "policyVersion": "2026-08-01",
+  "default": "deny",
+  "filesystem": {
+    "read": [
+      "AGENTS.md",
+      "agent-spec.yaml",
+      "prompt.md",
+      "tools.json",
+      "eval-plan.json",
+      "CHANGE_POLICY.md",
+      "workspace/drafts"
+    ],
+    "write": [
+      "workspace/drafts"
+    ]
+  },
+  "network": {
+    "allowed": true,
+    "destinations": [
+      "logs.internal.example",
+      "metrics.internal.example",
+      "runbooks.internal.example"
+    ]
+  },
+  "dataClasses": {
+    "public": "May be quoted in the report.",
+    "internal": "Keep within the incident workspace.",
+    "confidential": "Do not request or process.",
+    "restricted": "Do not request or process.",
+    "evaluation-hidden": "Evaluator-owned; unavailable to the agent."
+  },
+  "interfaces": [
+    {
+      "id": "logs.search",
+      "kind": "mcp",
+      "purpose": "Read redacted service logs for the supplied incident and time window.",
+      "sideEffects": "none"
+    },
+    {
+      "id": "metrics.query",
+      "kind": "mcp",
+      "purpose": "Read aggregate metrics for the supplied incident and time window.",
+      "sideEffects": "none"
+    },
+    {
+      "id": "runbooks.read",
+      "kind": "mcp",
+      "purpose": "Read the incident runbook and its revision metadata.",
+      "sideEffects": "none"
+    },
+    {
+      "id": "drafts.read",
+      "kind": "library",
+      "purpose": "Read local draft artifacts.",
+      "sideEffects": "none"
+    },
+    {
+      "id": "drafts.write",
+      "kind": "library",
+      "purpose": "Write files under workspace/drafts only.",
+      "sideEffects": "workspace"
+    },
+    {
+      "id": "eval.run_public_checks",
+      "kind": "command",
+      "purpose": "Run the public deterministic checks named by eval-plan.json.",
+      "sideEffects": "workspace"
+    }
+  ],
+  "explicitlyDenied": [
+    "services.restart",
+    "deployments.create",
+    "alerts.acknowledge",
+    "tickets.create",
+    "tickets.update",
+    "messages.send",
+    "shell.exec"
+  ],
+  "approvalRules": [
+    {
+      "trigger": "A new data source or wider time window is requested.",
+      "approver": "incident commander",
+      "failClosed": true
+    }
+  ]
+}

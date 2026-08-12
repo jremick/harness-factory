@@ -1,0 +1,171 @@
+{
+  "fixtureId": "release-notes-generated-harness-v1.0.0",
+  "expectStructuralValidity": true,
+  "wholeDocumentExpectation": "exact",
+  "boundary": {
+    "forwardAgentMayRead": [
+      "build/generated-harness/",
+      "skills/analyse-existing-harness/",
+      "src/hdp/schemas/hdp.schema.json"
+    ],
+    "forwardAgentMustNotRead": [
+      "examples/software-development/hdp.yaml",
+      "workstreams/analysis-skill/tests/evaluator-private/",
+      "workstreams/analysis-skill/tests/results/",
+      "workstreams/analysis-skill/fidelity-rubric.json"
+    ]
+  },
+  "facts": [
+    {
+      "id": "META-NAME", "group": "metadata", "path": "/metadata/name",
+      "expected": "release-notes-development", "normalizer": "exact",
+      "expectedEpistemic": ["declared"], "sourcePathsAny": [".hdp/source-definition.public.json"],
+      "humanConfirmation": "not-required", "weight": 1
+    },
+    {
+      "id": "PURPOSE-SUMMARY", "group": "purpose", "path": "/purpose/summary",
+      "expected": "Enable a coding agent to implement a small Python change correctly while obeying least-privilege, verification, evidence, and evaluator-separation controls.",
+      "normalizer": "text", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required",
+      "critical": true, "weight": 5
+    },
+    {
+      "id": "PURPOSE-OUTCOME", "group": "purpose", "path": "/purpose/intendedOutcomes/0/statement",
+      "expected": "The requested behavior passes an independent external acceptance oracle.",
+      "normalizer": "text", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required",
+      "critical": true, "weight": 5
+    },
+    {
+      "id": "OPERATION-ENVIRONMENT", "group": "operational-context", "path": "/operationalContext/environments/0/name",
+      "expected": "Disposable local fixture", "normalizer": "text", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required", "weight": 2
+    },
+    {
+      "id": "SUCCESS-THRESHOLD", "group": "success", "path": "/success/thresholds/0/value",
+      "expected": 1, "normalizer": "exact", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required",
+      "critical": true, "weight": 4
+    },
+    {
+      "id": "REQUIREMENT-FUNCTIONAL", "group": "requirements", "path": "/requirements/0/statement",
+      "expected": "The agent-produced change MUST satisfy the public task contract.",
+      "normalizer": "text", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required",
+      "critical": true, "weight": 4
+    },
+    {
+      "id": "MODEL-FALLBACK", "group": "models", "path": "/models/routing/fallback",
+      "expected": "stop", "normalizer": "exact", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required", "weight": 2
+    },
+    {
+      "id": "CONTRACT-OUTPUT", "group": "contracts", "path": "/contracts/outputs/0/mediaType",
+      "expected": "text/x-diff", "normalizer": "exact", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required", "weight": 2
+    },
+    {
+      "id": "CONTEXT-CONFLICT", "group": "context", "path": "/context/conflictPolicy",
+      "expected": "Higher-priority runtime instructions win; ambiguous behavior that changes output requires stopping for clarification.",
+      "normalizer": "text", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required", "weight": 2
+    },
+    {
+      "id": "TOOL-FIRST", "group": "tools", "path": "/tools/interfaces/0/name",
+      "expected": "CPython interpreter", "normalizer": "text", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required",
+      "critical": true, "weight": 4
+    },
+    {
+      "id": "ORCHESTRATION-DELEGATION", "group": "orchestration", "path": "/orchestration/delegation/allowed",
+      "expected": false, "normalizer": "exact", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required", "weight": 3
+    },
+    {
+      "id": "STATE-MEMORY", "group": "state", "path": "/state/durableMemory/enabled",
+      "expected": false, "normalizer": "exact", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required", "weight": 2
+    },
+    {
+      "id": "GOVERNANCE-DEFAULT", "group": "governance", "path": "/governance/permissions/default",
+      "expected": "deny", "normalizer": "exact", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required",
+      "critical": true, "weight": 5
+    },
+    {
+      "id": "GOVERNANCE-NETWORK", "group": "governance", "path": "/governance/permissions/network/allowed",
+      "expected": false, "normalizer": "exact", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required",
+      "critical": true, "weight": 5
+    },
+    {
+      "id": "RESOURCE-TIMEOUT", "group": "resources", "path": "/resources/timeouts/0/seconds",
+      "expected": 120, "normalizer": "exact", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required",
+      "critical": true, "weight": 3
+    },
+    {
+      "id": "FAILURE-CATEGORY", "group": "failures", "path": "/failures/taxonomy/0/category",
+      "expected": "specification", "normalizer": "exact", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required", "weight": 3
+    },
+    {
+      "id": "OBSERVABILITY-TRACE", "group": "observability", "path": "/observability/trace/enabled",
+      "expected": true, "normalizer": "exact", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required", "weight": 2
+    },
+    {
+      "id": "SAFETY-DEFAULT-DENY", "group": "safety", "path": "/safety/securityControls/0/statement",
+      "expected": "Capabilities are denied unless explicitly allowed by the runtime policy.",
+      "normalizer": "text", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required",
+      "critical": true, "weight": 5
+    },
+    {
+      "id": "EVALUATION-BOUNDARY", "group": "evaluation", "path": "/evaluation/boundary/external",
+      "expected": true, "normalizer": "exact", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required",
+      "critical": true, "weight": 5
+    },
+    {
+      "id": "EVALUATION-TEST", "group": "evaluation", "path": "/evaluation/tests/0/type",
+      "expected": "functional", "normalizer": "exact", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required",
+      "critical": true, "weight": 5
+    },
+    {
+      "id": "RUNTIME-SANDBOX", "group": "runtime", "path": "/runtime/sandbox/mode",
+      "expected": "os", "normalizer": "exact", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required",
+      "critical": true, "weight": 3
+    },
+    {
+      "id": "MONITORING-TRIGGER", "group": "monitoring", "path": "/monitoring/reassessmentTriggers/0/statement",
+      "expected": "Any digest change to schema, generator, generated harness, evaluator, fixture, or execution runtime triggers reassessment.",
+      "normalizer": "text", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required", "weight": 2
+    },
+    {
+      "id": "TRACEABILITY-FIRST-EDGE", "group": "traceability", "path": "/traceability/edges/0/relation",
+      "expected": "decomposedInto", "normalizer": "exact", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required",
+      "critical": true, "weight": 4
+    },
+    {
+      "id": "EVOLUTION-POLICY", "group": "evolution", "path": "/evolution/compatibility/policy",
+      "expected": "semantic-versioning", "normalizer": "exact", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required", "weight": 2
+    },
+    {
+      "id": "LIMITATION-FIRST", "group": "limitations", "path": "/limitations/0/status",
+      "expected": "known", "normalizer": "exact", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required", "weight": 2
+    },
+    {
+      "id": "RISK-FIRST", "group": "risks", "path": "/risks/0/impact",
+      "expected": "critical", "normalizer": "exact", "expectedEpistemic": ["declared"],
+      "sourcePathsAny": [".hdp/source-definition.public.json"], "humanConfirmation": "not-required",
+      "critical": true, "weight": 4
+    }
+  ]
+}

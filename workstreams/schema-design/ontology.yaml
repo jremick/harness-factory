@@ -1,0 +1,566 @@
+kind: HDPOntology
+apiVersion: hdp.dev/v0alpha1
+metadata:
+  id: urn:hdp:ontology:core:v0alpha1
+  title: Core Harness Definition Package ontology
+  version: 0.1.0
+  status: draft
+spec:
+  namespaces:
+    hdp: https://ontology.hdp.dev/v0alpha1/
+    prov: http://www.w3.org/ns/prov#
+    schema: https://schema.org/
+  modelingRules:
+    - Stable IDs identify entities; labels never establish identity.
+    - Classes describe conceptual entities independently of serialization modules.
+    - Normative relations use typed references and controlled predicates.
+    - Evaluator and hidden-evaluation entities remain outside the harness trust boundary.
+    - Evidence supports or refutes claims but never silently becomes a claim.
+  classes:
+    - id: hdp:Entity
+      label: Entity
+      definition: A typed, independently identifiable element in a resolved HDP graph.
+      requiredProperties: [id, kind]
+
+    - id: hdp:Package
+      label: Harness Definition Package
+      superClass: hdp:Entity
+      definition: A versioned collection of linked definitions for harness generation, operation, evaluation, and assurance.
+
+    - id: hdp:ResolvedPackage
+      label: Resolved HDP
+      superClass: hdp:Package
+      definition: An immutable canonical graph produced after imports, profiles, overlays, and defaults are resolved.
+      requiredProperties: [resolutionDigest, profile]
+
+    - id: hdp:Purpose
+      label: Purpose
+      superClass: hdp:Entity
+      definition: A bounded reason for operating the harness for identified users and outcomes.
+
+    - id: hdp:User
+      label: Intended user
+      superClass: hdp:Entity
+      definition: A person or user class expected to interact with or be served by the harness.
+
+    - id: hdp:Stakeholder
+      label: Stakeholder
+      superClass: hdp:Entity
+      definition: A party affected by, accountable for, or able to influence the harness or its outcomes.
+
+    - id: hdp:Outcome
+      label: Outcome
+      superClass: hdp:Entity
+      definition: An externally meaningful, observable effect for a user, system, or environment.
+
+    - id: hdp:Measure
+      label: Measure
+      superClass: hdp:Entity
+      definition: An operational definition for quantifying an outcome, control, service objective, or risk signal.
+
+    - id: hdp:Threshold
+      label: Threshold
+      superClass: hdp:Entity
+      definition: A comparator and target over a measure, including sample and uncertainty conditions.
+
+    - id: hdp:DecisionRule
+      label: Decision rule
+      superClass: hdp:Entity
+      definition: A deterministic rule that maps measure and threshold results, including missing data, to a decision.
+
+    - id: hdp:Task
+      label: Task
+      superClass: hdp:Entity
+      definition: An adjudicable unit of work with inputs, preconditions, expected artifacts or state transitions, constraints, and outcome criteria.
+
+    - id: hdp:Scenario
+      label: Scenario
+      superClass: hdp:Entity
+      definition: A task instance class with initial conditions, actors, events, perturbations, and expected observations.
+
+    - id: hdp:Environment
+      label: Operating environment
+      superClass: hdp:Entity
+      definition: External people, systems, data, policies, jurisdictions, and state observable or affectable by the harness.
+
+    - id: hdp:Assumption
+      label: Assumption
+      superClass: hdp:Entity
+      definition: A proposition relied upon but not guaranteed, with validation, owner, consequence, and expiry.
+
+    - id: hdp:Dependency
+      label: Dependency
+      superClass: hdp:Entity
+      definition: An external component, service, dataset, policy, or organization needed for operation or assurance.
+
+    - id: hdp:Exclusion
+      label: Exclusion
+      superClass: hdp:Entity
+      definition: An intentionally unsupported condition that explicitly narrows scope or a claim.
+
+    - id: hdp:Requirement
+      label: Requirement
+      superClass: hdp:Entity
+      definition: An atomic normative obligation with applicability, rationale, verification, and evidence expectations.
+
+    - id: hdp:HarnessDefinition
+      label: Harness definition
+      superClass: hdp:Entity
+      definition: The declarative controls and contracts from which a harness is generated or against which it is verified.
+
+    - id: hdp:Harness
+      label: AI harness
+      superClass: hdp:Entity
+      definition: The governed executable system around models that controls context, tools, flow, state, policy, resources, and artifacts.
+
+    - id: hdp:HarnessInstance
+      label: Harness instance
+      superClass: hdp:Harness
+      definition: A particular implementation and deployment bound to immutable definition, model, provider, runtime, tool, policy, and context identities.
+
+    - id: hdp:Generator
+      label: Harness generator
+      superClass: hdp:Entity
+      definition: A versioned transformer that emits harness artifacts or configuration from a resolved HDP.
+
+    - id: hdp:Model
+      label: Model
+      superClass: hdp:Entity
+      definition: An inference component with declared identity, capabilities, constraints, and behavioral uncertainty.
+
+    - id: hdp:Provider
+      label: Provider
+      superClass: hdp:Entity
+      definition: A service supplying model access under provider-specific interfaces, regions, retention, version, safety, and rate semantics.
+
+    - id: hdp:Runtime
+      label: Runtime
+      superClass: hdp:Entity
+      definition: The compute, process, network, storage, clock, scheduling, and secret-injection substrate that executes a harness.
+
+    - id: hdp:Deployment
+      label: Deployment
+      superClass: hdp:Entity
+      definition: A runtime-bound realization of a harness instance in one or more target environments.
+
+    - id: hdp:Contract
+      label: Contract
+      superClass: hdp:Entity
+      definition: A machine-checkable agreement for data, artifacts, interfaces, errors, or side effects.
+
+    - id: hdp:Artifact
+      label: Artifact
+      superClass: hdp:Entity
+      definition: A durable output or input with format, identity, integrity, custody, and lifecycle metadata.
+
+    - id: hdp:ContextSource
+      label: Context source
+      superClass: hdp:Entity
+      definition: A provenance-bearing source from which harness-readable context may be assembled.
+
+    - id: hdp:KnowledgeSnapshot
+      label: Knowledge snapshot
+      superClass: hdp:Artifact
+      definition: An immutable, time-bound view of knowledge sources with coverage and known gaps.
+
+    - id: hdp:Tool
+      label: Tool
+      superClass: hdp:Entity
+      definition: A declared callable interface with capabilities, data access, side effects, limits, and result contracts.
+
+    - id: hdp:Role
+      label: Harness role
+      superClass: hdp:Entity
+      definition: A bounded set of responsibilities, authority, tools, context, and output obligations in a harness.
+
+    - id: hdp:Flow
+      label: Orchestration flow
+      superClass: hdp:Entity
+      definition: A typed state-transition graph controlling execution.
+
+    - id: hdp:Delegation
+      label: Delegation
+      superClass: hdp:Entity
+      definition: A bounded transfer of work, never greater authority or budget, from one accountable role to another.
+
+    - id: hdp:StateStore
+      label: State store
+      superClass: hdp:Entity
+      definition: An authoritative or derived persistence boundary with schema, access, consistency, and lifecycle policy.
+
+    - id: hdp:MemoryPolicy
+      label: Memory policy
+      superClass: hdp:Entity
+      definition: Rules for writing, reading, correcting, retaining, deleting, and attributing harness memory.
+
+    - id: hdp:Principal
+      label: Principal
+      superClass: hdp:Entity
+      definition: A person, service, organization, or harness role to which authorization can apply.
+
+    - id: hdp:Permission
+      label: Permission grant
+      superClass: hdp:Entity
+      definition: A purpose-, scope-, condition-, and time-bounded authorization for a principal to act on a resource.
+
+    - id: hdp:ApprovalPolicy
+      label: Approval policy
+      superClass: hdp:Entity
+      definition: A fail-closed rule specifying when and by whom a proposed action may be approved.
+
+    - id: hdp:DataClass
+      label: Data class
+      superClass: hdp:Entity
+      definition: A classification carrying permitted uses, residency, disclosure, retention, and deletion obligations.
+
+    - id: hdp:Budget
+      label: Resource budget
+      superClass: hdp:Entity
+      definition: A hard or soft limit over a resource with scope, accounting, and exhaustion behavior.
+
+    - id: hdp:StopCondition
+      label: Stop condition
+      superClass: hdp:Entity
+      definition: A condition that terminates or blocks execution and specifies propagation, cleanup, evidence, and restart authority.
+
+    - id: hdp:FailureMode
+      label: Failure mode
+      superClass: hdp:Entity
+      definition: A classified way that a requirement, contract, component, or outcome can fail.
+
+    - id: hdp:RecoveryPolicy
+      label: Recovery policy
+      superClass: hdp:Entity
+      definition: A procedure for reaching a declared safe state, preserving integrity, compensating effects, or resuming work.
+
+    - id: hdp:Escalation
+      label: Escalation
+      superClass: hdp:Entity
+      definition: A severity-bound transfer of awareness or control to an accountable principal with acknowledgement expectations.
+
+    - id: hdp:Observation
+      label: Observation
+      superClass: hdp:Entity
+      definition: A timestamped fact captured from a harness, runtime, evaluator, user, or environment.
+
+    - id: hdp:Evidence
+      label: Evidence
+      superClass: hdp:Artifact
+      definition: A provenance- and integrity-bearing observation, artifact, attestation, or result admissible for a declared claim.
+
+    - id: hdp:Intervention
+      label: Intervention
+      superClass: hdp:Entity
+      definition: An authorized action taken in response to an observation, alert, drift, failure, or human decision.
+
+    - id: hdp:Risk
+      label: Risk
+      superClass: hdp:Entity
+      definition: Uncertainty about an event and consequence that can affect an asset, person, outcome, or obligation.
+
+    - id: hdp:Limitation
+      label: Limitation
+      superClass: hdp:Entity
+      definition: A known boundary or weakness that constrains expected behavior, coverage, or a claim.
+
+    - id: hdp:Control
+      label: Control
+      superClass: hdp:Entity
+      definition: A preventive, detective, corrective, or recovery mechanism intended to modify risk or enforce policy.
+
+    - id: hdp:EvaluationPlan
+      label: Evaluation plan
+      superClass: hdp:Entity
+      definition: A versioned design for independently judging a subject through declared scenarios, datasets, metrics, evaluators, and decision rules.
+
+    - id: hdp:Dataset
+      label: Evaluation dataset
+      superClass: hdp:Artifact
+      definition: A versioned population or sample used for evaluation, with lineage, rights, classification, and contamination policy.
+
+    - id: hdp:FixtureSet
+      label: Fixture set
+      superClass: hdp:Dataset
+      definition: A bounded set of evaluation inputs and optional labels with declared visibility and custody.
+
+    - id: hdp:EvaluationSuite
+      label: Evaluation suite
+      superClass: hdp:Entity
+      definition: A typed collection of evaluation cases covering positive, negative, adversarial, regression, safety, privacy, performance, or recovery behavior.
+
+    - id: hdp:Metric
+      label: Evaluation metric
+      superClass: hdp:Measure
+      definition: A versioned computation over evaluator inputs with direction, uncertainty, calibration, and limitations.
+
+    - id: hdp:Evaluator
+      label: Evaluator
+      superClass: hdp:Entity
+      definition: A logically separate deterministic, human, model-based, or hybrid process that judges execution evidence.
+
+    - id: hdp:EvaluationResult
+      label: Evaluation result
+      superClass: hdp:Evidence
+      definition: A signed or integrity-bound adjudication for a pinned subject, evaluation plan, fixture commitment, and evaluator.
+
+    - id: hdp:Baseline
+      label: Monitoring baseline
+      superClass: hdp:Entity
+      definition: A subject-bound reference distribution or value against which later observations are compared.
+
+    - id: hdp:DriftRule
+      label: Drift rule
+      superClass: hdp:Entity
+      definition: A persistence-aware decision rule comparing a signal to a pinned baseline and triggering an intervention.
+
+    - id: hdp:TraceEdge
+      label: Traceability edge
+      superClass: hdp:Entity
+      definition: A typed, provenance-bearing relation between two graph nodes.
+
+    - id: hdp:Claim
+      label: Assurance claim
+      superClass: hdp:Entity
+      definition: A scoped, time-bounded assertion about a pinned subject, supported or refuted by evidence and governed by invalidation triggers.
+
+    - id: hdp:ConformanceClaim
+      label: Conformance claim
+      superClass: hdp:Claim
+      definition: A claim that a subject satisfies mandatory obligations for named HDP and profile versions.
+
+    - id: hdp:FitnessClaim
+      label: Fitness claim
+      superClass: hdp:Claim
+      definition: A claim that a subject is suitable for a named purpose, users, and operating envelope given outcomes and residual risks.
+
+    - id: hdp:OperationalAssuranceClaim
+      label: Operational assurance claim
+      superClass: hdp:Claim
+      definition: A time-bounded claim of continuing conformance and acceptable fitness supported by runtime, monitoring, change, and incident evidence.
+
+    - id: hdp:Change
+      label: Change
+      superClass: hdp:Entity
+      definition: A versioned modification with compatibility, risk, migration, and assurance consequences.
+
+    - id: hdp:Deprecation
+      label: Deprecation
+      superClass: hdp:Change
+      definition: A staged withdrawal of an entity with replacement, removal bound, migration, and impact.
+  relations:
+    - id: hdp:defines
+      label: defines
+      domain: hdp:Package
+      range: hdp:Entity
+      cardinality: many
+
+    - id: hdp:intendedFor
+      label: intended for
+      domain: hdp:Purpose
+      range: hdp:User
+      cardinality: one-or-more
+
+    - id: hdp:seeks
+      label: seeks outcome
+      domain: hdp:Purpose
+      range: hdp:Outcome
+      cardinality: one-or-more
+
+    - id: hdp:measuredBy
+      label: measured by
+      domain: ['hdp:Outcome', 'hdp:Control', 'hdp:Risk']
+      range: hdp:Measure
+      cardinality: one-or-more
+
+    - id: hdp:acceptedBy
+      label: accepted by
+      domain: ['hdp:Outcome', 'hdp:EvaluationPlan']
+      range: hdp:DecisionRule
+      cardinality: exactly-one
+
+    - id: hdp:performedIn
+      label: performed in
+      domain: hdp:Task
+      range: hdp:Environment
+      cardinality: one-or-more
+
+    - id: hdp:dependsOn
+      label: depends on
+      domain: hdp:Entity
+      range: ['hdp:Dependency', 'hdp:Assumption', 'hdp:Entity']
+      cardinality: many
+
+    - id: hdp:constrains
+      label: constrains
+      domain: hdp:Requirement
+      range: hdp:Entity
+      cardinality: one-or-more
+
+    - id: hdp:realizes
+      label: realizes
+      domain: hdp:HarnessInstance
+      range: hdp:HarnessDefinition
+      cardinality: exactly-one
+
+    - id: hdp:generatedFrom
+      label: generated from
+      domain: ['hdp:HarnessDefinition', 'hdp:Artifact']
+      range: hdp:ResolvedPackage
+      cardinality: exactly-one
+
+    - id: hdp:usesModel
+      label: uses model
+      domain: hdp:Harness
+      range: hdp:Model
+      cardinality: one-or-more
+
+    - id: hdp:accessedThrough
+      label: accessed through
+      domain: hdp:Model
+      range: hdp:Provider
+      cardinality: one-or-more
+
+    - id: hdp:runsIn
+      label: runs in
+      domain: hdp:HarnessInstance
+      range: hdp:Runtime
+      cardinality: one-or-more
+
+    - id: hdp:invokes
+      label: invokes
+      domain: ['hdp:Harness', 'hdp:Role']
+      range: hdp:Tool
+      cardinality: many
+
+    - id: hdp:authorizedBy
+      label: authorized by
+      domain: ['hdp:Tool', 'hdp:Intervention', 'hdp:Principal']
+      range: ['hdp:Permission', 'hdp:ApprovalPolicy']
+      cardinality: one-or-more
+
+    - id: hdp:delegatesTo
+      label: delegates to
+      domain: hdp:Role
+      range: hdp:Role
+      cardinality: many
+
+    - id: hdp:boundedBy
+      label: bounded by
+      domain: ['hdp:Task', 'hdp:Flow', 'hdp:Delegation', 'hdp:Harness']
+      range: ['hdp:Budget', 'hdp:StopCondition']
+      cardinality: one-or-more
+
+    - id: hdp:recoversFrom
+      label: recovers from
+      domain: hdp:RecoveryPolicy
+      range: hdp:FailureMode
+      cardinality: one-or-more
+
+    - id: hdp:mitigates
+      label: mitigates
+      domain: ['hdp:Control', 'hdp:EvaluationSuite', 'hdp:RecoveryPolicy']
+      range: hdp:Risk
+      cardinality: many
+
+    - id: hdp:observes
+      label: observes
+      domain: ['hdp:Evaluator', 'hdp:Runtime']
+      range: hdp:Observation
+      cardinality: many
+
+    - id: hdp:evaluates
+      label: evaluates
+      domain: hdp:Evaluator
+      range: ['hdp:HarnessInstance', 'hdp:Observation', 'hdp:Artifact']
+      cardinality: one-or-more
+
+    - id: hdp:usesFixture
+      label: uses fixture
+      domain: hdp:EvaluationPlan
+      range: hdp:FixtureSet
+      cardinality: one-or-more
+
+    - id: hdp:produces
+      label: produces
+      domain: ['hdp:Harness', 'hdp:Runtime', 'hdp:Evaluator', 'hdp:Generator']
+      range: ['hdp:Artifact', 'hdp:Evidence', 'hdp:Observation']
+      cardinality: many
+
+    - id: hdp:supports
+      label: supports
+      domain: hdp:Evidence
+      range: hdp:Claim
+      cardinality: many
+
+    - id: hdp:refutes
+      label: refutes
+      domain: hdp:Evidence
+      range: hdp:Claim
+      cardinality: many
+
+    - id: hdp:verifiedBy
+      label: verified by
+      domain: ['hdp:Requirement', 'hdp:Control']
+      range: ['hdp:EvaluationPlan', 'hdp:Evidence']
+      cardinality: one-or-more
+
+    - id: hdp:validatedBy
+      label: validated by
+      domain: hdp:Outcome
+      range: hdp:EvaluationPlan
+      cardinality: one-or-more
+
+    - id: hdp:comparedWith
+      label: compared with baseline
+      domain: hdp:DriftRule
+      range: hdp:Baseline
+      cardinality: exactly-one
+
+    - id: hdp:triggers
+      label: triggers
+      domain: ['hdp:DriftRule', 'hdp:FailureMode', 'hdp:StopCondition']
+      range: ['hdp:Intervention', 'hdp:Escalation', 'hdp:RecoveryPolicy']
+      cardinality: one-or-more
+
+    - id: hdp:supersedes
+      label: supersedes
+      domain: hdp:Entity
+      range: hdp:Entity
+      cardinality: zero-or-one
+
+    - id: hdp:invalidates
+      label: invalidates
+      domain: ['hdp:Change', 'hdp:DriftRule', 'hdp:FailureMode']
+      range: hdp:Claim
+      cardinality: many
+  controlledVocabularies:
+    requirementLevel: [must, should, may, must-not, should-not]
+    result: [pass, fail, warning, not-run, not-applicable, inconclusive]
+    evidenceGrade: [assertion, inspection, test, evaluation, runtime-observation, independent-attestation]
+    fixtureVisibility: [public, restricted, hidden]
+    dataClassification: [public, internal, confidential, restricted, evaluation-hidden]
+    evaluationSuiteType: [positive, negative, adversarial, regression, safety, privacy, performance, recovery]
+    evaluatorMethod: [deterministic, human, model-judge, hybrid]
+    evaluatorIndependence: [logical, separate-runtime, separate-operator, independent-organization]
+    compatibility: [backward, forward, full, breaking]
+    changeCategory: [editorial, additive, behavioral, security, data, runtime, evaluator, breaking]
+    claimType: [conformance, fitness, outcome, control-effectiveness, operational-assurance]
+    lifecycleStatus: [draft, active, deprecated, retired]
+    riskRating: [low, moderate, high, critical]
+  invariants:
+    - id: hdp:InvariantEvaluatorBoundary
+      statement: No Evaluator is a Harness Role or Tool, and the Harness cannot invoke or inspect evaluator internals.
+    - id: hdp:InvariantHiddenFixtureIsolation
+      statement: Hidden FixtureSets are unreachable from harness context, state, tools, retrieval, training, generated artifacts, and run-visible telemetry.
+    - id: hdp:InvariantOutcomeTrace
+      statement: Every Outcome reaches a Measure, DecisionRule, EvaluationPlan, Evaluator, and Evidence contract.
+    - id: hdp:InvariantRequirementTrace
+      statement: Every mandatory Requirement reaches a verification method and expected Evidence unless a permitted valid waiver exists.
+    - id: hdp:InvariantNoDelegationEscalation
+      statement: A delegated Role receives no authority or resource budget exceeding the delegating Role.
+    - id: hdp:InvariantBoundedExecution
+      statement: Every Task, loop, and delegation tree has hard resource bounds and StopConditions.
+    - id: hdp:InvariantScopedClaims
+      statement: Every Claim identifies an immutable subject, scope, profile, evidence, result, expiry, and invalidation triggers.
+    - id: hdp:InvariantNoEmbeddedSecrets
+      statement: Secret values never occur in a Package; only opaque, governed references are permitted.

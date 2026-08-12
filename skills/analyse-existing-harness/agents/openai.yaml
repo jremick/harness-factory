@@ -1,0 +1,4 @@
+interface:
+  display_name: "Analyse Existing Harness"
+  short_description: "Reconstruct evidence-backed HDPs from harnesses"
+  default_prompt: "Use $analyse-existing-harness to reconstruct an evidence-qualified HDP with explicit unknowns and parity checks."

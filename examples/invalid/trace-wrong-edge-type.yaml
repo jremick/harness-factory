@@ -1,0 +1,5 @@
+# Intentionally invalid semantic mutation of the full example.
+mutation:
+  pointer: /traceability/edges/0/relation
+  value: supports
+expectedDiagnostic: HDP-SEM-TRACE-EDGE-TYPE

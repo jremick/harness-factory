@@ -1,0 +1,6 @@
+# Intentionally invalid semantic mutation of the full example.
+mutation:
+  pointer: /evaluation/fixtures/1/publicPath
+  value: private/cases.json
+expectedDiagnostic: HDP-SEM-HIDDEN-FIXTURE-LEAK
+

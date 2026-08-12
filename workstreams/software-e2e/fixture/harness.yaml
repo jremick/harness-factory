@@ -1,0 +1,103 @@
+api_version: hdp/v1
+kind: SoftwareHarness
+metadata:
+  name: stockroom-task
+  version: 1.0.0
+  owners:
+    - fixture-maintainer
+intent:
+  outcome: Implement the inventory reorder behavior requested by TASK.md and prove it without widening repository scope.
+  task_file: TASK.md
+  non_goals:
+    - Add a command-line interface or persistence layer.
+    - Change the public StockItem data model.
+workspace:
+  repository_root: .
+  writable_paths:
+    - src
+    - tests
+  prohibited_paths:
+    - .git
+    - .hdp
+    - .agents
+    - AGENTS.md
+    - TASK.md
+    - evidence
+    - scripts
+  manual_extension_paths:
+    - AGENTS.local.md
+    - .hdp/manual
+policy:
+  network: deny
+  external_writes: deny
+  secrets: deny
+  allowed_executables:
+    - python3
+workflow:
+  required_steps:
+    - id: inspect-task
+      instruction: Read TASK.md and the current implementation before proposing a change.
+      evidence: Record the behavior and constraints inspected.
+    - id: inspect-tests
+      instruction: Read the public tests and identify missing edge coverage.
+      evidence: Record the tests inspected and edge cases considered.
+    - id: implement
+      instruction: Make the smallest change that satisfies the task, adding focused public tests if useful.
+      evidence: Record the files changed and why.
+    - id: verify
+      instruction: Run every definition-owned verification command and review its result.
+      evidence: verification-results.json plus the final process event.
+  roles:
+    - id: implementer
+      purpose: Implement the requested behavior with a surgical repository-local change.
+      allowed_actions:
+        - Read the task, source, and public tests.
+        - Modify only allowlisted source and test paths.
+      forbidden_actions:
+        - Access parent or sibling paths.
+        - Use network, credentials, or external systems.
+    - id: verifier
+      purpose: Independently check behavior, scope, and required evidence before completion.
+      allowed_actions:
+        - Run definition-owned checks through the generated verification script.
+        - Report failures and residual risks.
+      forbidden_actions:
+        - Weaken tests or completion gates to obtain a pass.
+        - Inspect hidden or evaluator-owned material.
+verification:
+  commands:
+    - id: public-tests
+      argv:
+        - python3
+        - -m
+        - unittest
+        - discover
+        - -s
+        - tests
+        - -v
+      cwd: .
+      timeout_seconds: 60
+    - id: syntax
+      argv:
+        - python3
+        - -m
+        - compileall
+        - -q
+        - src
+        - tests
+      cwd: .
+      timeout_seconds: 30
+  success_criteria:
+    - id: BEHAVIOR-1
+      statement: The public inventory behavior described by TASK.md passes its repository tests.
+      checks:
+        - public-tests
+    - id: QUALITY-1
+      statement: Source and public tests compile without syntax errors.
+      checks:
+        - syntax
+assumptions:
+  - Python 3.11 or newer is available as python3.
+  - The repository public tests are safe to execute without network or credentials.
+open_requirements: []
+

@@ -1,0 +1,32 @@
+{
+  "date": "2026-08-12",
+  "status": "pass",
+  "checks": [
+    {
+      "id": "unit-tests",
+      "command": "PYTHONDONTWRITEBYTECODE=1 hdp-reference/.venv/bin/python -m unittest discover -s hdp-reference/workstreams/analysis-skill/tests -p 'test_*.py' -v",
+      "result": "8 tests passed"
+    },
+    {
+      "id": "json-parse",
+      "command": "jq empty fidelity-rubric.json and evaluator-private gold manifests and JSON fixture files",
+      "result": "pass"
+    },
+    {
+      "id": "gold-group-coverage",
+      "command": "Compare each gold fact path to fidelity-rubric.json coverageGroups",
+      "result": "generated round trip: 26 facts across 23 groups; foreign harness: 27 facts across 23 groups; no missing or mismatched groups"
+    },
+    {
+      "id": "diff-check",
+      "command": "git diff --check -- hdp-reference/workstreams/analysis-skill",
+      "result": "pass"
+    },
+    {
+      "id": "deterministic-reproduction",
+      "command": "Re-score both frozen outputs to temporary files and byte-compare them with the checked result JSON files",
+      "result": "pass; generated run exits 0, foreign run deterministically exits 1, both JSON reports are byte-identical"
+    }
+  ],
+  "scope": "Scorer implementation and fixtures only; this is not a forward-test result."
+}

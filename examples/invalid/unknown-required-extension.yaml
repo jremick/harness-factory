@@ -1,0 +1,11 @@
+# Intentionally invalid semantic mutation of the full example.
+mutation:
+  pointer: /extensions/x-example.required
+  value:
+    owner: https://example.com/hdp
+    schemaUri: https://example.com/hdp/required.schema.json
+    schemaDigest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    version: 1.0.0
+    required: true
+    payload: {feature: unsupported}
+expectedDiagnostic: HDP-SEM-UNSUPPORTED-REQUIRED-EXTENSION

@@ -1,0 +1,5 @@
+# Intentionally invalid structural mutation of the full example.
+mutation:
+  pointer: /requirements/0/verificationIds
+  value: []
+expectedDiagnostic: HDP-STRUCTURE

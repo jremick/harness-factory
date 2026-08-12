@@ -1,0 +1,6 @@
+# Intentionally invalid semantic mutation of the full example.
+mutation:
+  pointer: /purpose/intendedOutcomes/0/measureIds
+  value: [MEASURE-MISSING]
+expectedDiagnostic: HDP-SEM-UNRESOLVED-REF
+

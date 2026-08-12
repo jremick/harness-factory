@@ -1,0 +1,7 @@
+# Intentionally invalid semantic mutation of the full example.
+# Produced in tests by setting network.allowed=false while declaring a destination.
+mutation:
+  pointer: /governance/permissions/network/destinations
+  value: [example.com]
+expectedDiagnostic: HDP-SEM-NETWORK-CONTRADICTION
+

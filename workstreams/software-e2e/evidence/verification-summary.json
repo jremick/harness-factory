@@ -1,0 +1,43 @@
+{
+  "actual_agent_runs": [
+    {
+      "boundary_unchanged": true,
+      "blocker": "Codex could not execute even read-only tools because negotiation with the code-mode host timed out; no repository changes were made.",
+      "codex_exit_code": 0,
+      "completion_gate": false,
+      "evaluator_exit_code": 1,
+      "evidence": "runs/actual-clean-20260812/artifacts",
+      "mode": "default"
+    },
+    {
+      "boundary_unchanged": true,
+      "blocker": "Codex failed closed because the code-mode host was disabled; disabling the host is not a usable fallback execution path.",
+      "codex_exit_code": 0,
+      "completion_gate": false,
+      "evaluator_exit_code": 1,
+      "evidence": "runs/actual-clean-fallback-20260812/artifacts",
+      "mode": "diagnostic-only-disabled-host"
+    }
+  ],
+  "date": "2026-08-12",
+  "deterministic_checks": [
+    {
+      "command": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s hdp-reference/workstreams/software-e2e/tests -v",
+      "result": "pass",
+      "summary": "14 tests passed in 0.533 seconds"
+    },
+    {
+      "command": "python3 hdp-reference/workstreams/software-e2e/hdpgen.py validate hdp-reference/workstreams/software-e2e/fixture/harness.yaml",
+      "result": "pass",
+      "summary": "VALID: HDP-5F37BB1FEA89AAC4"
+    },
+    {
+      "command": "python3 -m json.tool hdp-reference/workstreams/software-e2e/schema/hdp.schema.json",
+      "result": "pass",
+      "summary": "schema JSON parsed"
+    }
+  ],
+  "risk_tier": 3,
+  "trace_id": "HDP-5F37BB1FEA89AAC4"
+}
+

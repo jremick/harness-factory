@@ -1,0 +1,21 @@
+{
+  "capturedAt": "2026-08-12T19:03:17+10:00",
+  "algorithm": "sha256",
+  "note": "Evaluator-owned pre-scoring commitments. Forward agents must not read this file.",
+  "files": {
+    "fidelity-rubric.json": "bd8913fded2e2dcb4a712e9564666d141c2ee06803fd4e84ecf7670992a7ddca",
+    "generated-roundtrip-gold.json": "5ea15f145f9e1019b21d8bc5cae849ceb4e8f19a5c52ea76967157139bf3b925",
+    "second-harness-gold.json": "9ea85eaa18ad8db0f292fb338e7e755d7b36265219f0c05ddb1b8f8b4f59e5aa",
+    "score_fidelity.py": "68453799c50a5becdec7d87a44dd488c28aff276532ac32c7751d4d1c95398b3",
+    "source-hdp.yaml": "abea502a98cd4d29e4a9bba8dbfac9a5baa70aaedc90e0806810a2cdcfcf66e2",
+    "generated-source-definition.public.json": "65244d46b16ac8028b1a0d65b3e0d09ca4d8be25860471afd28e2f896070817c",
+    "canonical-hdp.schema.json": "3628d2528172a4348dbbef085aba2a89d651238927d7737284af9c835a5f5287",
+    "second-harness/AGENTS.md": "afa356691f3e827dc0cf44b186602376418952a168f37a15e04ca3bcfa3712d2",
+    "second-harness/CHANGE_POLICY.md": "878985b04f858249c49b250acc0dac2b342bddc6a6b3cd05fda9ef256d24bbc9",
+    "second-harness/agent-spec.yaml": "1fb97d612fd38f0930a537ccb3cb9956e7f06cc69b0bc85901556041d0c7792a",
+    "second-harness/eval-plan.json": "06e99eba0fb44238d77812be7a0c334360b83a8797d7bd981ba7323b3c999106",
+    "second-harness/prompt.md": "a1bc2980aa86e1e3ab661314795e53b6d0823d4482da07e899e59170098225cd",
+    "second-harness/sample-trace.jsonl": "9bd3925de732c785e35e3d10e0926bb0e1dbbc4d06c26fd3965495182cad0da7",
+    "second-harness/tools.json": "a2b7270c48a30519e33f1166b37e3966443536d2c3d12452856daf991e3a32b5"
+  }
+}

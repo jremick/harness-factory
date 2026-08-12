@@ -1,0 +1,204 @@
+hdpVersion: 0.1.0
+kind: HarnessDefinition
+metadata:
+  id: urn:hdp:example:minimal
+  name: minimal-harness
+  title: Minimal controlled HDP
+  version: 1.0.0
+  status: draft
+  owners:
+    - {id: urn:principal:example-owner, name: Example owner, role: Owner}
+  provenance:
+    createdAt: '2026-08-12T00:00:00Z'
+    createdBy: HDP reference project
+    sources: []
+purpose:
+  summary: Demonstrate the smallest currently supported controlled HDP shape.
+  targetUsers:
+    - {id: USER-OPERATOR, name: Operator, statement: Operates a local disposable task.}
+  intendedOutcomes:
+    - id: OUTCOME-TASK-COMPLETE
+      statement: The task passes its independent deterministic acceptance check.
+      measureIds: [MEASURE-PASS]
+      timeHorizon: one execution
+  nonGoals: [Production deployment.]
+  excludedUses: [Tasks involving secrets or external writes.]
+operationalContext:
+  environments:
+    - id: ENV-LOCAL
+      name: Local fixture
+      description: Disposable local workspace.
+      constraints: [No network.]
+  taskDistribution:
+    - id: TASK-LOCAL
+      description: One bounded local task.
+      expectedFrequency: once
+      criticality: medium
+  assumptions: []
+  dependencies: []
+  exclusions: []
+success:
+  measures:
+    - id: MEASURE-PASS
+      name: Acceptance result
+      definition: Whether the external deterministic evaluator passes.
+      method: Process exit status.
+      direction: target
+      unit: boolean
+  thresholds:
+    - {id: THRESHOLD-PASS, measureId: MEASURE-PASS, operator: eq, value: true, gate: hard}
+  acceptanceCriteria:
+    - id: ACCEPTANCE-PASS
+      statement: The external evaluator passes.
+      requirementIds: [REQ-TASK]
+      evaluatorIds: [EVALUATOR-EXTERNAL]
+requirements:
+  - id: REQ-TASK
+    category: functional
+    priority: must
+    statement: The harness MUST complete the declared task correctly.
+    rationale: This is the required outcome.
+    verificationIds: [TEST-EXTERNAL]
+    status: accepted
+models:
+  capabilityRequirements:
+    - {id: MODEL-CAPABILITY-TASK, capability: Execute the bounded local task with tools., minimum: Capable agent model.}
+  providerConstraints: []
+  routing: {strategy: Use one declared capable model., fallback: stop, downshiftAllowed: false}
+contracts:
+  inputs: []
+  outputs: []
+  artifacts:
+    - {id: ARTIFACT-EVIDENCE, name: Evaluation evidence, mediaType: application/json, classification: internal, required: true}
+  interfaces: []
+context:
+  constructionRules:
+    - {id: CONTEXT-RULE-TASK, name: Task context, statement: Read only the task and directly relevant files.}
+  knowledgeSources: []
+  conflictPolicy: Stop when conflicting instructions materially change the result.
+tools:
+  interfaces:
+    - {id: TOOL-LOCAL, name: Local command runner, kind: command, purpose: Run bounded local checks., sideEffects: workspace}
+  externalSystems: []
+orchestration:
+  roles:
+    - id: ROLE-AGENT
+      name: Agent
+      responsibilities: [Implement and verify the task.]
+      toolIds: [TOOL-LOCAL]
+      prohibitedActions: [Network or external writes.]
+  stages:
+    - id: STAGE-EXECUTE
+      name: Execute and verify
+      roleIds: [ROLE-AGENT]
+      entryCriteria: [Task is available.]
+      exitCriteria: [Required verification passes.]
+      next: []
+  delegation: {allowed: false, maxDepth: 0, maxConcurrent: 0, permissionEscalationAllowed: false}
+state:
+  workingState: {format: markdown, location: STATE.md, checkpointTriggers: [After verification.]}
+  durableMemory: {enabled: false, scope: none, retention: None., writeCriteria: Never.}
+  lifecycle:
+    - {id: LIFECYCLE-RUN, name: Run, statement: Create a disposable workspace and close it after evaluation.}
+governance:
+  permissions:
+    default: deny
+    filesystem: {read: ['.'], write: ['.']}
+    network: {allowed: false, destinations: []}
+    tools: {allowedIds: [TOOL-LOCAL]}
+    prohibitedActions:
+      - {id: PROHIBITION-EXTERNAL, action: external writes, reason: Outside declared scope.}
+  dataClassifications:
+    - {id: DATA-INTERNAL, name: internal, handling: Keep inside the local fixture.}
+  approvals: []
+resources:
+  budgets:
+    - {id: BUDGET-WALLTIME, resource: wall-time, limit: 300, unit: seconds, hard: true}
+  timeouts:
+    - {id: TIMEOUT-COMMAND, scope: each command, seconds: 60, onExpiry: stop}
+  rateLimits: []
+  stoppingConditions:
+    - {id: STOP-PROHIBITED, statement: A prohibited capability is required., action: stop}
+failures:
+  taxonomy:
+    - {id: FAILURE-CHECK, name: Verification failure, category: evaluation, detection: Required check fails., effect: No completion claim., severity: high}
+  recoveryPolicies:
+    - {id: RECOVERY-STOP, statement: Preserve evidence and stop., failureIds: [FAILURE-CHECK], maxAttempts: 0}
+  escalations: []
+observability:
+  trace: {enabled: true, correlationId: Per-run ID., redaction: Exclude secrets., retention: Project evidence lifetime.}
+  events:
+    - {id: EVENT-CHECK, name: Check completed, when: After verification., fields: [command, exitCode, digest]}
+  interventions: []
+safety:
+  securityControls:
+    - {id: CONTROL-DENY, statement: Deny undeclared capabilities., verificationIds: [TEST-EXTERNAL]}
+  privacyControls:
+    - {id: CONTROL-NO-SECRETS, statement: 'Do not include credentials or secrets in specifications, generated artifacts, or evidence.', verificationIds: [TEST-EXTERNAL]}
+  safetyConstraints: []
+  compliance: []
+evaluation:
+  boundary:
+    external: true
+    harnessAccess: prohibited
+    evaluatorWriteAccess: evidence-only
+    hiddenMaterialPolicy: Hidden cases remain outside the model-harness system.
+  datasets: []
+  fixtures: []
+  scenarios:
+    - {id: SCENARIO-LOCAL, name: Local task, taskClassId: TASK-LOCAL, fixtureIds: [], expectedOutcomeIds: [OUTCOME-TASK-COMPLETE]}
+  metrics:
+    - {id: METRIC-PASS, name: Pass result, method: Deterministic exit status., deterministic: true, measureId: MEASURE-PASS}
+  evaluators:
+    - {id: EVALUATOR-EXTERNAL, name: External evaluator, method: deterministic, independence: external, metricIds: [METRIC-PASS]}
+  tests:
+    - id: TEST-EXTERNAL
+      name: External acceptance
+      type: functional
+      visibility: hidden
+      evaluatorId: EVALUATOR-EXTERNAL
+      scenarioIds: [SCENARIO-LOCAL]
+      requirementIds: [REQ-TASK]
+      expected: Exit zero.
+      evidenceArtifactId: ARTIFACT-EVIDENCE
+  negativeTests: [{testId: TEST-EXTERNAL}]
+  adversarialTests: [{testId: TEST-EXTERNAL}]
+  regressionTests: [{testId: TEST-EXTERNAL}]
+runtime:
+  profile: {id: minimal-controlled, type: codex-software-development, version: 1.0.0, conformance: controlled}
+  deploymentTargets:
+    - {id: RUNTIME-LOCAL, os: portable, architecture: portable, runtime: Python 3.12, dependencyLock: uv.lock}
+  sandbox: {mode: os, network: deny, filesystemPolicy: workspace-write}
+monitoring:
+  baselines: []
+  driftRules:
+    - {id: DRIFT-SUBJECT, statement: 'Re-evaluate when the model, harness, runtime, or evaluator changes.', measureId: MEASURE-PASS, response: re-evaluate}
+  alerts:
+    - {id: ALERT-REGRESSION, statement: Treat a failed regression as release blocking., owner: Example owner}
+  reassessmentTriggers:
+    - {id: REASSESS-CHANGE, name: Subject change, statement: 'Re-evaluate after a material model, harness, runtime, or evaluator change.'}
+traceability:
+  nodes:
+    - {id: TRACE-OUTCOME, kind: outcome, ref: OUTCOME-TASK-COMPLETE}
+    - {id: TRACE-REQUIREMENT, kind: requirement, ref: REQ-TASK}
+    - {id: TRACE-COMPONENT, kind: component, ref: ARTIFACT-EVIDENCE}
+    - {id: TRACE-TEST, kind: test, ref: TEST-EXTERNAL}
+    - {id: TRACE-EVIDENCE, kind: evidence, ref: ARTIFACT-EVIDENCE}
+  edges:
+    - {id: EDGE-OUTCOME-REQUIREMENT, from: TRACE-OUTCOME, relation: decomposedInto, to: TRACE-REQUIREMENT}
+    - {id: EDGE-REQUIREMENT-COMPONENT, from: TRACE-REQUIREMENT, relation: implementedBy, to: TRACE-COMPONENT}
+    - {id: EDGE-COMPONENT-TEST, from: TRACE-COMPONENT, relation: verifiedBy, to: TRACE-TEST}
+    - {id: EDGE-TEST-EVIDENCE, from: TRACE-TEST, relation: produces, to: TRACE-EVIDENCE}
+evolution:
+  compatibility: {policy: semantic-versioning, breakingChangeRule: Breaking semantics require a major version.}
+  changeControl: {owner: Example owner, approval: Owner review., regressionRequired: true}
+  deprecations: []
+limitations: []
+risks:
+  - id: RISK-SCOPE
+    statement: The minimal example does not demonstrate production assurance.
+    likelihood: medium
+    impact: medium
+    treatment: Scope claims to this example.
+    residual: Broader task distributions remain untested.
+extensions: {}
