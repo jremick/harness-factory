@@ -1,21 +1,27 @@
-# Harness Factory reference prototype
+# Harness Factory
 
-A working Python 3.12 factory for compiling a target-neutral Harness Definition
+An active Python 3.12 factory for compiling a target-neutral Harness Definition
 Package (HDP) into a Codex software-development harness, executing it against an
 independent task corpus, reconstructing it through an evidence-aware analyser,
 and packaging digest-bound release evidence.
 
 ## Repository role
 
-This repository is the versioned HDP reference line: it preserves the schema,
-working specification, examples, analyser skill, reference implementation, and
-evidence needed to reproduce a particular HDP contract version. Active product
-and integration development belongs in
-[`jremick/harness-factory`](https://github.com/jremick/harness-factory).
+This is the active implementation and integration repository. It owns product
+development, compiler and adapter evolution, runtime integrations, operational
+tooling, and the work needed to turn the v0.1 reference implementation into a
+maintained factory.
 
-The two repositories intentionally share the verified v0.1 ancestry. Changes
-to this reference line should arrive as explicit, evidence-backed version
-updates rather than as uncoordinated product experiments.
+The versioned contract and reproducible reference line live in
+[`jremick/hdp-reference`](https://github.com/jremick/hdp-reference). The two
+repositories intentionally share the verified v0.1 ancestry, but reference
+updates require an explicit evidence-backed version sync rather than automatic
+mirroring.
+
+The v0.1 Python distribution remains named `hdp-reference` and exposes the
+`hdp` CLI so its recorded package subjects and verification evidence remain
+valid. Any product-package rename is a separate compatibility decision for a
+future version.
 
 The current verification state is recorded in
 [`docs/verification-report.md`](docs/verification-report.md). A successful build
