@@ -5,10 +5,29 @@ Package (HDP) into a Codex software-development harness, executing it against an
 independent task corpus, reconstructing it through an evidence-aware analyser,
 and packaging digest-bound release evidence.
 
+## Repository role
+
+This repository is the versioned HDP reference line: it preserves the schema,
+working specification, examples, analyser skill, reference implementation, and
+evidence needed to reproduce a particular HDP contract version. Active product
+and integration development belongs in
+[`jremick/harness-factory`](https://github.com/jremick/harness-factory).
+
+The two repositories intentionally share the verified v0.1 ancestry. Changes
+to this reference line should arrive as explicit, evidence-backed version
+updates rather than as uncoordinated product experiments.
+
 The current verification state is recorded in
 [`docs/verification-report.md`](docs/verification-report.md). A successful build
 is not automatically release-eligible: all four live Codex behavioural gates
 must also pass for the same generated subject.
+
+The v0.1 vertical slice is working: the deterministic suite passes and the same
+strict generated harness completed the release-notes fixture in two independently
+evaluated agent runs. The package remains intentionally release-ineligible because
+the revised existing-harness skill still needs a clean post-fix blind foreign-
+harness run and the local Codex CLI tool host was unhealthy during the final
+four-task reality check.
 
 ## Five-minute quickstart
 
@@ -139,4 +158,5 @@ compatibility aliases. Run `uv run hdp COMMAND --help` for exact options.
 Start with the [architecture](docs/architecture.md),
 [working specification](docs/specification.md), [research brief](docs/research-brief.md),
 [threat model](docs/threat-model.md), [authoring guide](docs/authoring-guide.md),
-and [ADRs](docs/decisions/).
+[repository boundaries](docs/repository-boundaries.md), and
+[ADRs](docs/decisions/).

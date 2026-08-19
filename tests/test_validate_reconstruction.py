@@ -178,6 +178,9 @@ def test_analyser_public_projection_validates_with_adjacent_evidence_map(tmp_pat
 def test_exact_reconstruction_unknowns_fail_when_marked_generation_ready(tmp_path):
     _, analysis = _analysed_public_projection(tmp_path)
     hdp = analysis / "hdp.reconstructed.yaml"
+    definition = yaml.safe_load(hdp.read_text(encoding="utf-8"))
+    definition["extensions"]["x-hdp-reconstruction"]["generationReady"] = True
+    hdp.write_text(yaml.safe_dump(definition, sort_keys=False), encoding="utf-8")
     evidence_path = analysis / "evidence-map.json"
     evidence_map = json.loads(evidence_path.read_text(encoding="utf-8"))
     record = next(

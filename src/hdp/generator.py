@@ -695,15 +695,30 @@ def _render_files(
 
 
 def _public_source_definition(definition: Mapping[str, Any]) -> Dict[str, Any]:
-    """Return the exact declared HDP after canonical JSON normalisation.
+    """Return a strict public projection of evaluator-sensitive metadata."""
 
-    Definitions contain public evaluator contracts and opaque commitments, not
-    evaluator-private cases, answers, credentials, or implementation code. The
-    exact declared contract is therefore safe to reconstruct and remains a
-    structurally valid input for analyse-to-compile round trips.
-    """
-
-    return json.loads(canonical_json(definition))
+    projected = json.loads(canonical_json(definition))
+    evaluation = projected.get("evaluation", {})
+    hidden_allowlists = {
+        "datasets": {"id", "visibility", "custodian", "digest"},
+        "fixtures": {"id", "visibility", "custodian", "commitment"},
+        "tests": {
+            "id", "visibility", "evaluatorId", "scenarioIds", "requirementIds",
+            "evidenceArtifactId",
+        },
+    }
+    for collection, allowed in hidden_allowlists.items():
+        evaluation[collection] = [
+            (
+                {key: item[key] for key in sorted(allowed) if key in item}
+                if item.get("visibility") == "hidden"
+                else item
+            )
+            for item in evaluation.get(collection, [])
+        ]
+    for evaluator in evaluation.get("evaluators", []):
+        evaluator.pop("implementationRef", None)
+    return projected
 
 
 def _load_previous_manifest(output: Path) -> Dict[str, Any]:

@@ -41,9 +41,21 @@ class GeneratorTests(unittest.TestCase):
                 item for item in public["evaluation"]["tests"]
                 if item["visibility"] == "hidden"
             )
-            self.assertIn("expected", hidden_test)
+            self.assertEqual(
+                set(hidden_fixture), {"commitment", "custodian", "id", "visibility"}
+            )
+            self.assertEqual(
+                set(hidden_test),
+                {
+                    "evaluatorId", "evidenceArtifactId", "id", "requirementIds",
+                    "scenarioIds", "visibility",
+                },
+            )
+            self.assertNotIn("expected", hidden_test)
+            self.assertNotIn("name", hidden_test)
+            self.assertNotIn("type", hidden_test)
             self.assertTrue(all(
-                item["implementationRef"].startswith("urn:artifact:evaluator:")
+                "implementationRef" not in item
                 for item in public["evaluation"]["evaluators"]
             ))
 
