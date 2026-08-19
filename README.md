@@ -12,11 +12,12 @@ development, compiler and adapter evolution, runtime integrations, operational
 tooling, and the work needed to turn the v0.1 reference implementation into a
 maintained factory.
 
-The versioned contract and reproducible reference line live in
-[`jremick/hdp-reference`](https://github.com/jremick/hdp-reference). The two
-repositories intentionally share the verified v0.1 ancestry, but reference
-updates require an explicit evidence-backed version sync rather than automatic
-mirroring.
+The provider-neutral draft specification lives in
+[`jremick/hdp-reference`](https://github.com/jremick/hdp-reference). It has an
+independent specification history and is authoritative for the general HDP
+contract. This factory is a non-normative implementation: compatibility must be
+mapped to an identified HDP version rather than inferred from shared Git
+ancestry or automatic mirroring.
 
 The v0.1 Python distribution remains named `hdp-reference` and exposes the
 `hdp` CLI so its recorded package subjects and verification evidence remain
@@ -162,7 +163,7 @@ compatibility aliases. Run `uv run hdp COMMAND --help` for exact options.
   generated harness, model context, and runtime ledger.
 
 Start with the [architecture](docs/architecture.md),
-[working specification](docs/specification.md), [research brief](docs/research-brief.md),
+[implementation contract snapshot](docs/specification.md), [research brief](docs/research-brief.md),
 [threat model](docs/threat-model.md), [authoring guide](docs/authoring-guide.md),
 [repository boundaries](docs/repository-boundaries.md), and
 [ADRs](docs/decisions/).
