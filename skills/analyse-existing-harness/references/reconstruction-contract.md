@@ -49,9 +49,42 @@ They establish an intended business outcome only when an authorized source says
 what effect is desired for which user or environment. Otherwise use an explicit
 unknown outcome and set `generationReady: false`.
 
+## Lossless source mapping
+
+Map the source assertion at the granularity required by the target field:
+
+- atomic typed fields retain only their explicit atomic value, including media
+  types, durations, identifiers, enums, booleans, numbers, paths, and digests;
+- when a coordinated sentence declares typed values for different target
+  fields, each field receives only its matching atomic value; adjacent values
+  remain separate mappings or explicit omissions;
+- free-text fields retain the complete source scalar or sentence, including
+  qualifiers and coordinated lists;
+- removing declarative framing from a subject phrase removes the exact
+  subject-and-copula frame; a standalone statement changes only its first
+  remaining alphabetic character to sentence case and otherwise preserves the
+  phrase's determiner and punctuation;
+- a path-bearing declared output remains an output contract even when it is also
+  represented as an artifact;
+- public and hidden fixture commitments remain represented in
+  `evaluation.fixtures`; and
+- every structured security, privacy, and safety item reaches its corresponding
+  HDP control collection or an explicit omission record.
+
+The source-to-HDP coverage table is a work artifact, not proof. The final
+evidence map and parity suite remain the machine-readable authority for emitted
+facts and lossless declared strings.
+
 ## Contradictions and omission
 
 Preserve both sides with separate locations. Prefer the active runtime readback
 for observed behavior while retaining the stale declaration as a contradiction.
 Do not silently resolve conflicts by source order. List inaccessible, absent, or
 unverifiable artifact classes in `omissions`.
+
+When a required field is absent from the HDP because the source does not support
+an honest value, retain an evidence-map record at that unresolved JSON Pointer.
+Use `value: null`, `claimClass: absent-or-unknowable`, `epistemicStatus: unknown`,
+`confidence: 0`, a specific `missingEvidence` entry, and required human
+confirmation. This record validates the epistemic accounting; it does not make
+the core HDP schema-valid or generation-ready.

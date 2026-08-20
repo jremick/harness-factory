@@ -39,7 +39,7 @@ def test_command_bindings_cover_only_governance_allowed_commands() -> None:
             CodexAdapter(load_codex_binding(BINDING)).plan(hir)
 
 
-def test_mcp_binding_and_allowed_mcp_capability_fail_closed() -> None:
+def test_mcp_binding_and_unbound_protocol_capability_fail_closed() -> None:
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
         binding = load_document(BINDING)
@@ -60,13 +60,13 @@ def test_mcp_binding_and_allowed_mcp_capability_fail_closed() -> None:
             item for item in definition["tools"]["interfaces"]
             if item["id"] == "TOOL-PYTHON"
         )
-        python_tool["kind"] = "mcp"
+        python_tool["kind"] = "protocol"
         definition_path = _write_yaml(root, "mcp-hdp.yaml", definition)
         hir = validate_and_normalise(definition_path)
         command_only = load_document(BINDING)
         command_only["commandBindings"].pop("TOOL-PYTHON")
         command_binding_path = _write_yaml(root, "command-binding.yaml", command_only)
-        with pytest.raises(ValueError, match="cannot bind MCP capability"):
+        with pytest.raises(ValueError, match="exactly cover governance-allowed"):
             CodexAdapter(load_codex_binding(command_binding_path)).plan(hir)
 
 

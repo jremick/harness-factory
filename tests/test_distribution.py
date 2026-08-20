@@ -81,6 +81,10 @@ def test_built_distributions_contain_only_public_package_files(tmp_path: Path) -
     sdist_package_files = {path for path in sdist_files if path.startswith("src/")}
 
     expected_wheel_files = _source_package_files("hdp")
+    expected_wheel_files.update({
+        "hdp/templates/codex-sdlc/hdp.yaml",
+        "hdp/templates/codex-sdlc/bindings/codex.yaml",
+    })
     expected_sdist_package_files = _source_package_files("src/hdp")
     assert wheel_package_files == expected_wheel_files
     assert sdist_package_files == expected_sdist_package_files
@@ -92,6 +96,7 @@ def test_built_distributions_contain_only_public_package_files(tmp_path: Path) -
         "LICENSE",
         "PKG-INFO",
         "README.md",
+        "examples",
         "pyproject.toml",
         "src",
     }

@@ -16,12 +16,12 @@
   "gates": [
     {
       "command": [
-        "/Users/jarel/Documents/New project/hdp-reference/.venv/bin/python3",
+        "$REPOSITORY/.venv/bin/python3",
         "-m",
         "pytest",
         "-q"
       ],
-      "durationSeconds": 15.822,
+      "durationSeconds": 24.264,
       "exitCode": 0,
       "expectedExitCodes": [
         0
@@ -34,17 +34,17 @@
       },
       "stdout": {
         "path": "logs/pytest.stdout.log",
-        "sha256": "98191ddfbc1ef372b653f08c19b6ee87c66118ee98e9ee1097ab5101effd6132"
+        "sha256": "b80ad1cf6ed5260f48c1e7f66a311be67cf0783895d94c3d5e8b75f36437fa52"
       }
     },
     {
       "command": [
-        "/Users/jarel/Documents/New project/hdp-reference/.venv/bin/hdp",
+        "$REPOSITORY/.venv/bin/hdp",
         "validate",
-        "/Users/jarel/Documents/New project/hdp-reference/examples/software-development/hdp.yaml",
+        "$REPOSITORY/examples/software-development/hdp.yaml",
         "--json"
       ],
-      "durationSeconds": 0.273,
+      "durationSeconds": 0.294,
       "exitCode": 0,
       "expectedExitCodes": [
         0
@@ -57,20 +57,20 @@
       },
       "stdout": {
         "path": "logs/validate.stdout.log",
-        "sha256": "c54721776c528193b6dbdd648af70aea74c181952b530fe3b13f1f51e254991e"
+        "sha256": "f24329830ed6028b1f32d67465c56c115302cdfacfe3cd7568de7ff106da11dd"
       }
     },
     {
       "command": [
-        "/Users/jarel/Documents/New project/hdp-reference/.venv/bin/hdp",
+        "$REPOSITORY/.venv/bin/hdp",
         "compile",
-        "/Users/jarel/Documents/New project/hdp-reference/examples/software-development/hdp.yaml",
+        "$REPOSITORY/examples/software-development/hdp.yaml",
         "--binding",
-        "/Users/jarel/Documents/New project/hdp-reference/examples/software-development/bindings/codex.yaml",
+        "$REPOSITORY/examples/software-development/bindings/codex.yaml",
         "--output",
-        "/Users/jarel/Documents/New project/hdp-reference/evidence/local-verification-current-4/work/generated-harness"
+        "$EVIDENCE/work/generated-harness"
       ],
-      "durationSeconds": 0.256,
+      "durationSeconds": 0.269,
       "exitCode": 0,
       "expectedExitCodes": [
         0
@@ -83,20 +83,20 @@
       },
       "stdout": {
         "path": "logs/compile.stdout.log",
-        "sha256": "a7692605a88bb017d7f96c5feb78f1b739a4811b43566f8d7601dceb89f4e146"
+        "sha256": "5e9de2df3deb0511e56f8c33322fdb69f049c8b909dd4ac73e11fb64ee06dccb"
       }
     },
     {
       "command": [
-        "/Users/jarel/Documents/New project/hdp-reference/.venv/bin/hdp",
+        "$REPOSITORY/.venv/bin/hdp",
         "test",
-        "/Users/jarel/Documents/New project/hdp-reference/evidence/local-verification-current-4/work/generated-harness",
+        "$EVIDENCE/work/generated-harness",
         "--definition",
-        "/Users/jarel/Documents/New project/hdp-reference/examples/software-development/hdp.yaml",
+        "$REPOSITORY/examples/software-development/hdp.yaml",
         "--binding",
-        "/Users/jarel/Documents/New project/hdp-reference/examples/software-development/bindings/codex.yaml"
+        "$REPOSITORY/examples/software-development/bindings/codex.yaml"
       ],
-      "durationSeconds": 0.199,
+      "durationSeconds": 0.215,
       "exitCode": 0,
       "expectedExitCodes": [
         0
@@ -114,13 +114,13 @@
     },
     {
       "command": [
-        "/Users/jarel/Documents/New project/hdp-reference/.venv/bin/hdp",
+        "$REPOSITORY/.venv/bin/hdp",
         "analyse",
-        "/Users/jarel/Documents/New project/hdp-reference/evidence/local-verification-current-4/work/generated-harness",
+        "$EVIDENCE/work/generated-harness",
         "--output",
-        "/Users/jarel/Documents/New project/hdp-reference/evidence/local-verification-current-4/work/analysis"
+        "$EVIDENCE/work/analysis"
       ],
-      "durationSeconds": 0.268,
+      "durationSeconds": 0.265,
       "exitCode": 0,
       "expectedExitCodes": [
         0
@@ -133,17 +133,17 @@
       },
       "stdout": {
         "path": "logs/analyse.stdout.log",
-        "sha256": "ac8874c5640791bd89bbc93e3a70f41da11c97329338f239cd6d02b1f2473ea2"
+        "sha256": "e0f6900c06da164311c5fac5757de49542d1cb6da2be48ff53d52f17dedbc4d8"
       }
     },
     {
       "command": [
-        "/Users/jarel/Documents/New project/hdp-reference/.venv/bin/hdp",
+        "$REPOSITORY/.venv/bin/hdp",
         "diff",
-        "/Users/jarel/Documents/New project/hdp-reference/examples/software-development/hdp.yaml",
-        "/Users/jarel/Documents/New project/hdp-reference/evidence/local-verification-current-4/work/analysis/hdp.reconstructed.yaml"
+        "$REPOSITORY/examples/software-development/hdp.yaml",
+        "$EVIDENCE/work/analysis/hdp.reconstructed.yaml"
       ],
-      "durationSeconds": 0.284,
+      "durationSeconds": 0.28,
       "exitCode": 0,
       "expectedExitCodes": [
         0
@@ -156,22 +156,22 @@
       },
       "stdout": {
         "path": "logs/round-trip-diff.stdout.log",
-        "sha256": "e8f6f46fc697a41db6033e0d35b69af7bb8c62457c0514ff0a7647dd46de622d"
+        "sha256": "2a56b7e5bbded403c607541d8ec035a5e28f654519dbbf87f2068bb083bf83cd"
       }
     },
     {
       "command": [
-        "/Users/jarel/Documents/New project/hdp-reference/.venv/bin/hdp",
+        "$REPOSITORY/.venv/bin/hdp",
         "package",
-        "/Users/jarel/Documents/New project/hdp-reference/evidence/local-verification-current-4/work/generated-harness",
+        "$EVIDENCE/work/generated-harness",
         "--definition",
-        "/Users/jarel/Documents/New project/hdp-reference/examples/software-development/hdp.yaml",
+        "$REPOSITORY/examples/software-development/hdp.yaml",
         "--binding",
-        "/Users/jarel/Documents/New project/hdp-reference/examples/software-development/bindings/codex.yaml",
+        "$REPOSITORY/examples/software-development/bindings/codex.yaml",
         "--output",
-        "/Users/jarel/Documents/New project/hdp-reference/evidence/local-verification-current-4/work/release"
+        "$EVIDENCE/work/release"
       ],
-      "durationSeconds": 0.225,
+      "durationSeconds": 0.216,
       "exitCode": 0,
       "expectedExitCodes": [
         0
@@ -184,16 +184,16 @@
       },
       "stdout": {
         "path": "logs/package-ineligible.stdout.log",
-        "sha256": "3826749ddc85fab601d848423fb27efe0f47fc60a00d9b1309888558abd1f22d"
+        "sha256": "6064adf0f4a7124d08efc4f90069f46e4227efc6dbf2a9e1804a2e2761cf8ccc"
       }
     },
     {
       "command": [
-        "/Users/jarel/Documents/New project/hdp-reference/.venv/bin/hdp",
+        "$REPOSITORY/.venv/bin/hdp",
         "verify-release",
-        "/Users/jarel/Documents/New project/hdp-reference/evidence/local-verification-current-4/work/release"
+        "$EVIDENCE/work/release"
       ],
-      "durationSeconds": 0.133,
+      "durationSeconds": 0.123,
       "exitCode": 0,
       "expectedExitCodes": [
         0
@@ -206,16 +206,16 @@
       },
       "stdout": {
         "path": "logs/verify-release.stdout.log",
-        "sha256": "7f8d7a72265bc5bccdf00389f0c619685e1187bc783190328a3452b3e713ad2f"
+        "sha256": "2d4f7a5d23f6e07f3b723f23356195861d163815f95ccac524ad242ad8ed700d"
       }
     },
     {
       "command": [
-        "/Users/jarel/Documents/New project/hdp-reference/.venv/bin/hdp",
+        "$REPOSITORY/.venv/bin/hdp",
         "verify-release",
-        "/Users/jarel/Documents/New project/hdp-reference/evidence/local-verification-current-4/work/release-tampered"
+        "$EVIDENCE/work/release-tampered"
       ],
-      "durationSeconds": 0.118,
+      "durationSeconds": 0.121,
       "exitCode": 2,
       "expectedExitCodes": [
         2
@@ -228,14 +228,36 @@
       },
       "stdout": {
         "path": "logs/tamper-detected.stdout.log",
-        "sha256": "61d90d6042bad88e5cf7dbbce1aec1ab054b9ed94d03f9fdb2a35f4e74ca80ed"
+        "sha256": "d768a300658880fc17a42b8c0dae21a954fd25f3b6c014fcbfc84d9ad7694159"
       }
     }
   ],
   "kind": "LocalVerificationEvidence",
+  "logProjection": "machine-local repository and evidence roots replaced with portable markers",
   "passed": true,
-  "recordedAt": "2026-08-12T10:12:44.394979+00:00",
+  "recordedAt": "2026-08-20T02:43:39.740927+00:00",
   "releaseEligibilityReason": "live behavioural conformance is a separate mandatory gate",
   "releaseEligible": false,
-  "schemaVersion": "0.1.0"
+  "schemaVersion": "0.1.0",
+  "sourceSnapshot": {
+    "binding": "git-commit",
+    "commit": "65148468a0cdf4e6f192c76de3447e655a6e719c",
+    "dirty": false
+  },
+  "subject": {
+    "binding": {
+      "sha256": "8d5d98510faeac2ae086815af4bdaaeebaf914bcb0dd5d29b02dac85ead904a0",
+      "target": "codex"
+    },
+    "definition": {
+      "id": "urn:hdp:example:ai-sdlc",
+      "sha256": "de9a1eb1497369aede8d3e62c809b45cdef76b1ee547a3d4b8401590cb1ba8e6"
+    },
+    "harness": {
+      "sha256": "f07ab4d2cbe9966ee7d3d2821ebfe41b9ef24d2164cc8e75dad9f96944b15b63"
+    },
+    "hir": {
+      "sha256": "31ab704d5ea6d2d5a2457840fc48a0abeeda7facd5fb39bf1930ef22dcc827fd"
+    }
+  }
 }

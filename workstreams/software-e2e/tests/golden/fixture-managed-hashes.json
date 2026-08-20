@@ -1,6 +1,6 @@
 {
   "managed_files": {
-    ".agents/skills/stockroom-task-delivery/SKILL.md": "6ced181a39602db56d067527ad1a466be9a748355c0b51ed7755505edf82135c",
+    ".agents/skills/stockroom-task-delivery/SKILL.md": "9818ec092d346585c54c10eaf3208d44874e86368350bec532118e7dd5d21a48",
     ".hdp/requirements.json": "51eaf14d39a2c1c972f22f6752247a83094ec822a4ee09b7d7f4fc8dfe727401",
     ".hdp/roles/implementer.md": "46d0420557ecbfc54488b90ef22741fc3f2fed66b4ddfcb6c5fa9bd91be4f11a",
     ".hdp/roles/verifier.md": "705ae826d55f8b18cb56f47173fd59a43dc7d1891b6e3c2bece9bbd9846f97f3",

@@ -522,7 +522,7 @@ Before a write, run `python3 scripts/check_path.py --write <path>`. After the
 implementation, run `python3 scripts/run_verification.py`, record the final
 process step, and run `python3 scripts/check_completion.py`.
 
-Do not use network access, secrets, parent/sibling paths, external writes, or
+Do not use network access, credential material, parent/sibling paths, external writes, or
 unlisted executables unless the source HDP is revised and the harness regenerated.
 """
 
@@ -1019,4 +1019,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

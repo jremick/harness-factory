@@ -1,5 +1,12 @@
 # Independent evaluator boundary
 
+Checked-in evaluator packages are public reproducibility fixtures. Isolation
+during execution protects evaluator-owned files from the candidate process, but
+publication means their contents are not genuinely hidden from repository
+readers. A held-out claim requires an untracked, separately controlled evaluator
+whose commitment is recorded before the run. See
+[ADR 0011](decisions/0011-public-evaluator-fixture-semantics.md).
+
 ## Trust model
 
 The system under evaluation is the model plus generated harness plus fixture
@@ -35,4 +42,7 @@ its acceptance implementation are outside that system.
 Logical path isolation alone is weaker than an OS sandbox. The end-to-end runner
 must record whether it used OS-level sandboxing or the fallback command wrapper,
 and the verification report must not equate the fallback with strong isolation.
-
+The 2026-08-20 public-alpha probe found that Codex `workspace-write` allowed an
+outside-workspace read on the current macOS host. Evaluator filenames and
+canaries remained undisclosed during the task runs, but that is not a general
+read-isolation guarantee; generated-harness release eligibility remains denied.

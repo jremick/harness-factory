@@ -1,0 +1,15 @@
+{
+  "errors": [
+    "content digest mismatch: harness/HarnessCard.md",
+    "size mismatch: harness/HarnessCard.md",
+    "payload metadata does not match release manifest",
+    "payload set digest mismatch",
+    "invalid release subject binding: generated artifact was modified: HarnessCard.md",
+    "invalid attestation subject or predicate metadata: build.intoto.json",
+    "invalid attestation subject or predicate metadata: tests.intoto.json"
+  ],
+  "payloadDigest": "7bb3f6d28940b07e119b70f51159ce3d04ebafd1b8024bfea579c37deff3e7bb",
+  "releaseEligible": false,
+  "status": "fail",
+  "verified": false
+}

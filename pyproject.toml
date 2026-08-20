@@ -3,12 +3,13 @@ requires = ["hatchling==1.27.0"]
 build-backend = "hatchling.build"
 
 [project]
-name = "hdp-reference"
-version = "0.1.0"
-description = "Reference validator, generator, and analyser for Harness Definition Packages"
+name = "harness-factory"
+version = "0.2.0a1"
+description = "Build, analyse, validate, and independently evaluate AI agent harnesses"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 dependencies = [
   "Jinja2>=3.1,<4",
   "jsonschema[format]==4.25.1",
@@ -18,11 +19,14 @@ dependencies = [
 ]
 
 [project.scripts]
+harness = "hdp.cli:harness_main"
 hdp = "hdp.cli:main"
 
 [tool.hatch.build.targets.sdist]
 only-include = [
   "src/hdp",
+  "examples/software-development/hdp.yaml",
+  "examples/software-development/bindings/codex.yaml",
   "pyproject.toml",
   "README.md",
   "LICENSE",
@@ -33,6 +37,8 @@ packages = ["src/hdp"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "src/hdp/schemas/hdp.schema.json" = "hdp/schemas/hdp.schema.json"
+"examples/software-development/hdp.yaml" = "hdp/templates/codex-sdlc/hdp.yaml"
+"examples/software-development/bindings/codex.yaml" = "hdp/templates/codex-sdlc/bindings/codex.yaml"
 
 [dependency-groups]
 dev = [

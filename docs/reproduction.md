@@ -1,8 +1,8 @@
-# Reproducing the HDP reference result
+# Reproducing Harness Factory results
 
-Run these commands from the `hdp-reference` directory with Python 3.12, `uv`
-0.11.25 or compatible, and an authenticated agent runtime. The deterministic
-checks do not require network access.
+Run these commands from a clean Harness Factory checkout with Python 3.12 and
+the locked `uv` environment. An authenticated Codex runtime is needed only for
+live behavioural runs; deterministic checks do not require it.
 
 ## 1. Validate and test the implementation
 
@@ -84,12 +84,15 @@ and operational-assurance gates remain inconclusive.
 
 ## 5. Reconstruct an HDP
 
-For a generated harness:
+For a generated harness, the embedded declared HDP must reconstruct as valid and
+round-trip exactly:
 
 ```bash
 uv run hdp analyse build/reproduced-harness \
   --output build/reconstructed-generated
 uv run python skills/analyse-existing-harness/scripts/validate_reconstruction.py \
+  build/reconstructed-generated/hdp.reconstructed.yaml
+uv run hdp diff examples/software-development/hdp.yaml \
   build/reconstructed-generated/hdp.reconstructed.yaml
 ```
 

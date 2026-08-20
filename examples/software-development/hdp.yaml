@@ -529,7 +529,7 @@ evaluation:
 runtime:
   profile:
     id: codex-ai-sdlc
-    type: codex-software-development
+    type: software-development
     version: 1.0.0
     conformance: controlled
   deploymentTargets:

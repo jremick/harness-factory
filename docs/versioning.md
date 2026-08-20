@@ -1,5 +1,9 @@
 # Versioning policy
 
+The Harness Factory distribution and the HDP contract version independently.
+Factory `0.2.0a1` supports the compatibility matrix in
+[`compatibility.md`](compatibility.md); it is not HDP `0.2`.
+
 HDP, HIR, target bindings, adapters, release manifests, evidence records, and
 custom attestation predicates have independent semantic versions.
 

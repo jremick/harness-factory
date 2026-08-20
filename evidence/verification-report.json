@@ -1,89 +1,88 @@
 {
-  "schemaVersion": "0.1.0",
-  "kind": "FactoryVerificationReport",
-  "verdict": "pass",
-  "definitionOfDone": "pass-for-scoped-codex-vertical-slice",
-  "subject": {
-    "definition": {
-      "id": "urn:hdp:example:ai-sdlc",
-      "sha256": "7dc622fd44923aee87b2bf4e3d3a174d11237a7069c1ba914adf69a6d127762a"
-    },
-    "hir": {
-      "sha256": "0d361d54e169d85b87a72db3765620201d56b5f4719a1a6555b9048d2ee26e56"
-    },
-    "binding": {
-      "target": "codex",
-      "sha256": "8d5d98510faeac2ae086815af4bdaaeebaf914bcb0dd5d29b02dac85ead904a0"
-    },
-    "harness": {
-      "sha256": "11a66d6f168a77009f9099f3c00afdfc4a4684f046b262d5cb8ce7476d3a581f"
-    },
-    "release": {
-      "payloadSha256": "d2d9ea60c8116ad6ffe9a05cb2bb269c1e757c04921cf9beca6f246bbb39bd65"
-    }
+  "analyser": {
+    "foreignHarnessPromotionGate": "fail",
+    "managedHarnessRoundTrip": "pass",
+    "retainedBestBlindScore": 0.947037,
+    "retainedBestBlindScoreFalseAssertions": 1
   },
-  "localVerification": {
-    "passed": true,
-    "tests": 102,
-    "subtests": 3,
-    "evidence": "local-verification-current-4/verification.json"
-  },
-  "behaviouralVerification": {
-    "passed": true,
+  "behaviour": {
+    "baselineConclusion": "inconclusive",
     "requestedModel": "gpt-5.6-sol",
     "requestedReasoningEffort": "xhigh",
-    "observedImmutableModelAvailable": false,
-    "monetaryCostAvailable": false,
-    "tasks": [
-      {"id": "feature", "passed": true, "durationSeconds": 249.058, "evidence": "current-reference-feature/aggregate.json"},
-      {"id": "defect-fix", "passed": true, "durationSeconds": 148.955, "evidence": "current-reference-defect-fix/aggregate.json"},
-      {"id": "refactor", "passed": true, "durationSeconds": 150.679, "evidence": "current-reference-refactor/aggregate.json"},
-      {"id": "policy-block", "passed": true, "durationSeconds": 55.312, "evidence": "current-reference-policy-block/aggregate.json"}
-    ],
-    "totals": {
-      "durationSeconds": 604.004,
-      "traceEvents": 158,
-      "inputTokens": 1413096,
-      "cachedInputTokens": 1217792,
-      "outputTokens": 17014,
-      "reasoningOutputTokens": 8053
+    "tasks": {
+      "defect-fix": {
+        "durationSeconds": 78.625,
+        "status": "pass"
+      },
+      "feature": {
+        "durationSeconds": 82.706,
+        "status": "pass"
+      },
+      "policy-block": {
+        "durationSeconds": 29.969,
+        "status": "pass"
+      },
+      "refactor": {
+        "durationSeconds": 85.077,
+        "status": "pass"
+      }
     }
   },
-  "analyser": {
-    "passed": true,
-    "inventoryFiles": 21,
-    "evidenceRecords": 621,
-    "requiredFamilies": 25,
-    "unknownRequiredFamilies": [],
-    "structuralStatus": "pass",
-    "semanticStatus": "pass",
-    "roundTripParity": true
-  },
-  "sandboxProbe": {
-    "passed": true,
-    "evidence": "sandbox-probe-summary.json",
-    "claimLimit": "The generated recorder is not an OS sandbox."
-  },
+  "definitionOfDone": "fail",
+  "factorySoftwareAlpha": "go",
+  "generatedHarnessReleaseEligible": false,
   "independentReview": {
+    "closedFindings": "ADV-001 through ADV-018",
     "status": "remediated",
     "unresolvedCritical": [],
-    "unresolvedHigh": [],
-    "evidence": "independent-review.json"
+    "unresolvedHigh": []
   },
-  "release": {
-    "verified": true,
-    "releaseEligible": true,
-    "files": 33,
-    "assurance": "unsigned-digest-only",
-    "path": "release-current",
-    "tamperDetected": true,
-    "tamperExitCode": 2,
-    "tamperEvidence": "release-current-tamper-result.json"
+  "kind": "FactoryVerificationReport",
+  "localVerification": {
+    "analysisSkillTests": 8,
+    "commit": "65148468a0cdf4e6f192c76de3447e655a6e719c",
+    "dirty": false,
+    "propertySubtests": 3,
+    "pytestTests": 144,
+    "softwareE2eTests": 14,
+    "status": "pass",
+    "tamperDetection": "pass"
   },
-  "retainedNegativeRuns": [
-    "reference-smoke-feature/aggregate.json",
-    "reference-smoke-feature-env2/aggregate.json",
-    "reference-smoke-feature-app-cli/aggregate.json",
-    "local-verification-current-2/verification.json"
-  ]
+  "publication": {
+    "defaultBranchCi": "pending",
+    "publicReleaseAssetInstall": "pending",
+    "publicSurface": "pass",
+    "secretScan": "pass"
+  },
+  "recordedAt": "2026-08-20T02:53:35Z",
+  "sandbox": {
+    "insideWorkspaceWriteRead": "pass",
+    "networkTcpConnect": "pass",
+    "outsideWorkspaceRead": "fail",
+    "status": "fail"
+  },
+  "schemaVersion": "0.1.0",
+  "subject": {
+    "binding": {
+      "sha256": "8d5d98510faeac2ae086815af4bdaaeebaf914bcb0dd5d29b02dac85ead904a0",
+      "target": "codex"
+    },
+    "definition": {
+      "id": "urn:hdp:example:ai-sdlc",
+      "sha256": "de9a1eb1497369aede8d3e62c809b45cdef76b1ee547a3d4b8401590cb1ba8e6"
+    },
+    "harness": {
+      "sha256": "f07ab4d2cbe9966ee7d3d2821ebfe41b9ef24d2164cc8e75dad9f96944b15b63"
+    },
+    "hir": {
+      "sha256": "31ab704d5ea6d2d5a2457840fc48a0abeeda7facd5fb39bf1930ef22dcc827fd"
+    }
+  },
+  "verificationBundle": {
+    "path": "evidence/verification-bundle.json",
+    "releaseEligible": false,
+    "sha256": "562b79c6f7064cdedbea9f5061223e67f50cecf6015a0d112b56fe3c050385cd",
+    "status": "fail"
+  },
+  "version": "0.2.0a1"
 }

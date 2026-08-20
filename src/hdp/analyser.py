@@ -13,7 +13,10 @@ from typing import Any, Iterator
 
 import yaml
 
+from .bindings import CodexBinding
+from .conformance import binding_digest, subject_bindings
 from .diagnostics import HdpInputError
+from .hir import HIR
 from .io import atomic_write_text, dump_json, dump_yaml, load_document
 from .schema_validation import load_canonical_schema, structural_diagnostics
 from .semantic_validation import semantic_diagnostics
@@ -333,6 +336,29 @@ def analyse_harness(harness: Path, output: Path, *, allow_partial: bool = False)
         "structuralDiagnostics": [item.to_dict() for item in structural],
         "semanticDiagnostics": [item.to_dict() for item in semantic],
     }
+    if source_mode.startswith("embedded"):
+        try:
+            manifest = load_document(root / ".hdp/manifest.json")
+            embedded_hir = HIR.model_validate(load_document(root / ".hdp/hir.json"))
+            binding_model = CodexBinding.model_validate(_extract_binding(root))
+            from .packaging import _tree_digest
+
+            coverage["subject"] = subject_bindings(
+                definition_id=embedded_hir.source_id,
+                definition_digest=embedded_hir.source_digest,
+                hir_digest=embedded_hir.digest(),
+                binding_target=binding_model.target,
+                binding_digest_value=binding_digest(binding_model),
+                harness_digest=_tree_digest(root, ignore_ephemeral=True),
+            )
+            if manifest.get("source") != {
+                "id": embedded_hir.source_id,
+                "version": embedded_hir.canonical_semantics.get("metadata", {}).get("version"),
+                "sha256": embedded_hir.source_digest,
+            }:
+                coverage.pop("subject", None)
+        except (OSError, ValueError, HdpInputError):
+            coverage.pop("subject", None)
     uncertainty = {
         "unknowns": [item for item in evidence if item["epistemicStatus"] == "unknown"],
         "inferences": [item for item in evidence if item["epistemicStatus"] == "inferred"],

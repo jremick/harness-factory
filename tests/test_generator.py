@@ -41,21 +41,15 @@ class GeneratorTests(unittest.TestCase):
                 item for item in public["evaluation"]["tests"]
                 if item["visibility"] == "hidden"
             )
+            self.assertEqual(hidden_fixture["name"], "External acceptance cases")
+            self.assertEqual(hidden_test["name"], "External functional acceptance")
+            self.assertEqual(hidden_test["type"], "functional")
             self.assertEqual(
-                set(hidden_fixture), {"commitment", "custodian", "id", "visibility"}
+                hidden_test["expected"],
+                "Every external functional assertion passes.",
             )
-            self.assertEqual(
-                set(hidden_test),
-                {
-                    "evaluatorId", "evidenceArtifactId", "id", "requirementIds",
-                    "scenarioIds", "visibility",
-                },
-            )
-            self.assertNotIn("expected", hidden_test)
-            self.assertNotIn("name", hidden_test)
-            self.assertNotIn("type", hidden_test)
             self.assertTrue(all(
-                "implementationRef" not in item
+                item["implementationRef"].startswith("urn:artifact:evaluator:")
                 for item in public["evaluation"]["evaluators"]
             ))
 

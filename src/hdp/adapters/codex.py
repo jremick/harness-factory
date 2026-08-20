@@ -35,28 +35,13 @@ class CodexAdapter:
         allowed_capabilities = set(
             hir.canonical_semantics["governance"]["permissions"]["tools"]["allowedIds"]
         )
-        command_capabilities = {
-            entity.id for entity in hir.entities
-            if entity.kind == "capability" and entity.capability_type == "command"
-        }
-        allowed_commands = command_capabilities & allowed_capabilities
-        missing = sorted(allowed_commands - set(self.binding.command_bindings))
-        extra = sorted(set(self.binding.command_bindings) - allowed_commands)
+        bound_commands = set(self.binding.command_bindings)
+        missing = sorted(allowed_capabilities - bound_commands)
+        extra = sorted(bound_commands - allowed_capabilities)
         if missing or extra:
             raise ValueError(
-                "Codex command bindings must exactly cover governance-allowed command "
+                "Codex command bindings must exactly cover governance-allowed "
                 f"capabilities; missing={missing}, unknown-or-denied={extra}"
-            )
-        allowed_mcp = sorted(
-            entity.id for entity in hir.entities
-            if entity.kind == "capability"
-            and entity.capability_type == "mcp"
-            and entity.id in allowed_capabilities
-        )
-        if allowed_mcp:
-            raise ValueError(
-                "Codex adapter 0.1.0 cannot bind MCP capability, tool policy, and network "
-                f"authority exactly; unsupported allowed capabilities={allowed_mcp}"
             )
         semantics = hir.canonical_semantics
         required_external = {"environment", "filesystem", "network", "process"}
@@ -323,7 +308,7 @@ integrity, not builder identity, non-repudiation, SLSA level, or certification.
         ]
         expected_manifest_fields = {
             "manifestVersion": "1",
-            "generator": {"name": "hdp-reference", "version": __version__},
+            "generator": {"name": "harness-factory", "version": __version__},
             "source": {
                 "id": hir.canonical_semantics["metadata"]["id"],
                 "version": hir.canonical_semantics["metadata"]["version"],

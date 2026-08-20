@@ -61,7 +61,9 @@ def _safe_artifact(root: Path, value: Any) -> tuple[str, Path]:
     return value, resolved
 
 
-def _local_gate_results(value: Any) -> tuple[bool, dict[str, bool]]:
+def _local_gate_results(
+    value: Any, expected_subject: Mapping[str, Any]
+) -> tuple[bool, dict[str, bool]]:
     if not isinstance(value, dict) or value.get("kind") != "LocalVerificationEvidence":
         return False, {}
     gates = value.get("gates")
@@ -73,22 +75,30 @@ def _local_gate_results(value: Any) -> tuple[bool, dict[str, bool]]:
     }
     return (
         value.get("passed") is True
+        and value.get("subject") == dict(expected_subject)
+        and isinstance(value.get("sourceSnapshot"), dict)
+        and value["sourceSnapshot"].get("dirty") is False
+        and isinstance(value["sourceSnapshot"].get("commit"), str)
+        and len(value["sourceSnapshot"]["commit"]) in {40, 64}
         and LOCAL_GATES.issubset(results)
         and all(results[item] for item in LOCAL_GATES),
         results,
     )
 
 
-def _behaviour_passes(value: Any, task: str, hir_digest: str) -> bool:
+def _behaviour_passes(
+    value: Any, task: str, expected_subject: Mapping[str, Any]
+) -> bool:
     if not isinstance(value, dict):
         return False
     compilation = value.get("compilation")
     results = value.get("results")
     if (
         value.get("passed") is not True
+        or value.get("subject") != dict(expected_subject)
         or value.get("definitionOfDoneBehaviouralGate") != "pass"
         or not isinstance(compilation, dict)
-        or compilation.get("hir_digest") != hir_digest
+        or compilation.get("hir_digest") != expected_subject["hir"]["sha256"]
         or not isinstance(results, list)
     ):
         return False
@@ -111,19 +121,21 @@ def _behaviour_passes(value: Any, task: str, hir_digest: str) -> bool:
     )
 
 
-def _coverage_passes(value: Any) -> bool:
+def _coverage_passes(value: Any, expected_subject: Mapping[str, Any]) -> bool:
     return isinstance(value, dict) and (
         value.get("reconstructionStatus") == "implementation-aligned-draft"
         and value.get("sourceMode") == "embedded-generated-source-definition"
         and value.get("structuralStatus") == "pass"
         and value.get("semanticStatus") == "pass"
         and value.get("unknownRequiredFamilies") == []
+        and value.get("subject") == dict(expected_subject)
     )
 
 
-def _sandbox_passes(value: Any) -> bool:
+def _sandbox_passes(value: Any, expected_subject: Mapping[str, Any]) -> bool:
     return isinstance(value, dict) and (
         value.get("kind") == "CodexSandboxProbe"
+        and value.get("subject") == dict(expected_subject)
         and value.get("passed") is True
         and value.get("requestedModel") == "gpt-5.6-sol"
         and value.get("requestedReasoningEffort") == "xhigh"
@@ -134,9 +146,10 @@ def _sandbox_passes(value: Any) -> bool:
     )
 
 
-def _review_passes(value: Any) -> bool:
+def _review_passes(value: Any, expected_subject: Mapping[str, Any]) -> bool:
     return isinstance(value, dict) and (
         value.get("kind") == "IndependentAdversarialReview"
+        and value.get("subject") == dict(expected_subject)
         and value.get("reviewerModel") == "gpt-5.6-sol"
         and value.get("reasoningEffort") == "xhigh"
         and value.get("status") in {"pass", "remediated"}
@@ -195,16 +208,20 @@ def validate_verification_bundle(
             f"unknown={sorted(set(paths) - REQUIRED_ARTIFACTS)}"
         )
 
-    local_pass, local_gates = _local_gate_results(values["local-verification"])
+    local_pass, local_gates = _local_gate_results(
+        values["local-verification"], expected_subject
+    )
     behaviour_pass = all(
         _behaviour_passes(
-            values[artifact_id], task, expected_subject["hir"]["sha256"]
+            values[artifact_id], task, expected_subject
         )
         for task, artifact_id in TASK_ARTIFACTS.items()
     )
-    analyser_pass = local_pass and _coverage_passes(values["analyser-coverage"])
-    sandbox_pass = _sandbox_passes(values["sandbox-probe"])
-    review_pass = _review_passes(values["independent-review"])
+    analyser_pass = local_pass and _coverage_passes(
+        values["analyser-coverage"], expected_subject
+    )
+    sandbox_pass = _sandbox_passes(values["sandbox-probe"], expected_subject)
+    review_pass = _review_passes(values["independent-review"], expected_subject)
     gate_passes = {
         "input-integrity": local_pass and local_gates.get("validate", False),
         "semantic-hir": local_pass and local_gates.get("validate", False),

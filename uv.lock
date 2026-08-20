@@ -61,8 +61,8 @@ wheels = [
 ]
 
 [[package]]
-name = "hdp-reference"
-version = "0.1.0"
+name = "harness-factory"
+version = "0.2.0a1"
 source = { editable = "." }
 dependencies = [
     { name = "jinja2" },

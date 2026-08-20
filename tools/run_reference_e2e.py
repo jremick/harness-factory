@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import platform
+import secrets
 import shutil
 import stat
 import subprocess
@@ -22,12 +23,21 @@ REFERENCE = PROJECT / "reference" / "tasks"
 DEFINITION = PROJECT / "examples" / "software-development" / "hdp.yaml"
 BINDING = PROJECT / "examples" / "software-development" / "bindings" / "codex.yaml"
 TASKS = ("feature", "defect-fix", "refactor", "policy-block")
-CANARY = "HDP_EVALUATOR_PRIVATE_CANARY_9C17D04A"
+EVIDENCE_RESULT_FIELDS = (
+    "task", "mode", "passed", "codexExitCode", "evaluatorExitCode",
+    "timedOut", "durationSeconds", "evaluatorBoundaryUnchanged",
+    "evaluatorCanaryLeaks", "evaluatorCanaryCommitment", "requestedModel",
+    "requestedReasoningEffort", "observedModels", "traceEvents",
+    "usageRecords", "cost", "taskInputSha256", "workspaceChanged",
+)
 
 
 sys.path.insert(0, str(PROJECT / "src"))
-from hdp.compiler import compile_hdp  # noqa: E402
+from hdp.bindings import load_codex_binding  # noqa: E402
+from hdp.compiler import compile_hdp, validate_and_normalise  # noqa: E402
+from hdp.conformance import binding_digest, stable_binding_identity, subject_bindings  # noqa: E402
 from hdp.io import dump_json  # noqa: E402
+from hdp.packaging import _tree_digest  # noqa: E402
 
 
 def sha256(path: Path) -> str:
@@ -137,7 +147,8 @@ def run_case(
     artifacts = case_root / "artifacts"
     shutil.copytree(REFERENCE / task / "repository", workspace)
     shutil.copytree(REFERENCE / task / "evaluator", evaluator)
-    (evaluator / "PRIVATE_CANARY.txt").write_text(CANARY + "\n", encoding="utf-8")
+    canary = f"HDP_EVALUATOR_RUN_CANARY_{secrets.token_hex(16).upper()}"
+    (evaluator / "PRIVATE_CANARY.txt").write_text(canary + "\n", encoding="utf-8")
     if mode == "harness":
         shutil.copytree(generated_harness, workspace, dirs_exist_ok=True)
     artifacts.mkdir(parents=True)
@@ -203,7 +214,7 @@ def run_case(
     leakage = [
         path.relative_to(workspace).as_posix()
         for path in workspace.rglob("*")
-        if path.is_file() and CANARY in path.read_text(encoding="utf-8", errors="ignore")
+        if path.is_file() and canary in path.read_text(encoding="utf-8", errors="ignore")
     ]
     trace = inspect_jsonl(artifacts / "codex.jsonl")
     passed = (
@@ -216,6 +227,7 @@ def run_case(
         "timedOut": timed_out, "durationSeconds": duration,
         "evaluatorBoundaryUnchanged": evaluator_before == evaluator_after,
         "evaluatorCanaryLeaks": leakage,
+        "evaluatorCanaryCommitment": hashlib.sha256(canary.encode()).hexdigest(),
         "requestedModel": "gpt-5.6-sol", "requestedReasoningEffort": "xhigh",
         "observedModels": trace["observedModels"],
         "traceEvents": trace["events"], "usageRecords": trace["usageRecords"],
@@ -231,6 +243,33 @@ def run_case(
 def version(command: list[str]) -> str:
     result = capture(command, PROJECT)
     return (result.stdout or result.stderr).strip().splitlines()[0] if (result.stdout or result.stderr).strip() else "unavailable"
+
+
+def task_aggregate(aggregate: dict[str, Any], task: str) -> dict[str, Any]:
+    """Project one task into a content-addressable release-evidence document."""
+
+    matching = [
+        {key: item[key] for key in EVIDENCE_RESULT_FIELDS if key in item}
+        for item in aggregate.get("results", [])
+        if isinstance(item, dict) and item.get("task") == task
+    ]
+    harness = [item for item in matching if item.get("mode") == "harness"]
+    passed = len(harness) == 1 and harness[0].get("passed") is True
+    return {
+        "schemaVersion": aggregate.get("schemaVersion"),
+        "passed": passed,
+        "definitionOfDoneBehaviouralGate": "pass" if passed else "fail",
+        "compilation": {
+            "hir_digest": (
+                aggregate.get("compilation", {}).get("hir_digest")
+                if isinstance(aggregate.get("compilation"), dict)
+                else None
+            )
+        },
+        "subject": aggregate.get("subject"),
+        "environment": aggregate.get("environment"),
+        "results": matching,
+    }
 
 
 def main() -> int:
@@ -255,6 +294,18 @@ def main() -> int:
     run_root.mkdir(parents=True)
     generated = run_root / "generated-harness"
     compilation = compile_hdp(DEFINITION, BINDING, generated)
+    binding_model = load_codex_binding(BINDING)
+    hir = validate_and_normalise(
+        DEFINITION, binding_ref=stable_binding_identity(binding_model)
+    )
+    subject = subject_bindings(
+        definition_id=hir.source_id,
+        definition_digest=hir.source_digest,
+        hir_digest=hir.digest(),
+        binding_target=binding_model.target,
+        binding_digest_value=binding_digest(binding_model),
+        harness_digest=_tree_digest(generated, ignore_ephemeral=True),
+    )
     selected = tuple(args.task or TASKS)
     results: list[dict[str, Any]] = []
     for task in selected:
@@ -274,6 +325,7 @@ def main() -> int:
         "schemaVersion": "0.1.0", "passed": all_harness_passed,
         "definitionOfDoneBehaviouralGate": "pass" if all_harness_passed else "fail",
         "compilation": compilation.model_dump(mode="json"),
+        "subject": subject,
         "environment": environment, "results": results,
     }
     conformance = {
@@ -286,6 +338,10 @@ def main() -> int:
         "environment": environment,
     }
     (run_root / "aggregate.json").write_text(dump_json(aggregate), encoding="utf-8")
+    for task in selected:
+        (run_root / f"behaviour-{task}.json").write_text(
+            dump_json(task_aggregate(aggregate, task)), encoding="utf-8"
+        )
     (run_root / "conformance.json").write_text(dump_json(conformance), encoding="utf-8")
     print(dump_json(aggregate), end="")
     return 0 if all_harness_passed else 1

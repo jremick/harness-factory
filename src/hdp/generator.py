@@ -584,15 +584,11 @@ def _render_files(
                 "runtime command bindings and allowed executables must be supplied together"
             )
         allowed_ids = set(permissions.get("tools", {}).get("allowedIds", []))
-        allowed_commands = {
-            item["id"] for item in definition.get("tools", {}).get("interfaces", [])
-            if item.get("kind") == "command" and item.get("id") in allowed_ids
-        }
         command_bindings = overlay["commandBindings"]
-        if not isinstance(command_bindings, Mapping) or set(command_bindings) != allowed_commands:
+        if not isinstance(command_bindings, Mapping) or set(command_bindings) != allowed_ids:
             raise HdpGenerationError(
-                "runtime command bindings must exactly cover governance-allowed command "
-                f"capabilities: expected={sorted(allowed_commands)}"
+                "runtime command bindings must exactly cover governance-allowed "
+                f"capabilities: expected={sorted(allowed_ids)}"
             )
         executable_pattern = re.compile(r"[A-Za-z0-9._+-]+")
         if any(
@@ -695,30 +691,14 @@ def _render_files(
 
 
 def _public_source_definition(definition: Mapping[str, Any]) -> Dict[str, Any]:
-    """Return a strict public projection of evaluator-sensitive metadata."""
+    """Return the exact declared HDP, which contains only public contracts.
 
-    projected = json.loads(canonical_json(definition))
-    evaluation = projected.get("evaluation", {})
-    hidden_allowlists = {
-        "datasets": {"id", "visibility", "custodian", "digest"},
-        "fixtures": {"id", "visibility", "custodian", "commitment"},
-        "tests": {
-            "id", "visibility", "evaluatorId", "scenarioIds", "requirementIds",
-            "evidenceArtifactId",
-        },
-    }
-    for collection, allowed in hidden_allowlists.items():
-        evaluation[collection] = [
-            (
-                {key: item[key] for key in sorted(allowed) if key in item}
-                if item.get("visibility") == "hidden"
-                else item
-            )
-            for item in evaluation.get(collection, [])
-        ]
-    for evaluator in evaluation.get("evaluators", []):
-        evaluator.pop("implementationRef", None)
-    return projected
+    Private evaluator cases, answers, source and canaries are not valid HDP
+    inputs. Required public contract metadata must remain intact so an analysed
+    generated harness validates and round-trips without guessed values.
+    """
+
+    return json.loads(canonical_json(definition))
 
 
 def _load_previous_manifest(output: Path) -> Dict[str, Any]:
@@ -834,10 +814,10 @@ def generate_harness(
             "unknowns and obtain the required human confirmations"
         )
 
-    if definition["runtime"]["profile"]["type"] != "codex-software-development":
+    if definition["runtime"]["profile"]["type"] != "software-development":
         raise HdpGenerationError(
             "reference generator supports only runtime.profile.type "
-            "codex-software-development"
+            "software-development"
         )
 
     files, source_map = _render_files(definition, runtime_policy_overlay)
@@ -904,7 +884,7 @@ def generate_harness(
     ]
     manifest: Dict[str, Any] = {
         "manifestVersion": "1",
-        "generator": {"name": "hdp-reference", "version": __version__},
+        "generator": {"name": "harness-factory", "version": __version__},
         "source": {
             "id": definition["metadata"]["id"],
             "version": definition["metadata"]["version"],

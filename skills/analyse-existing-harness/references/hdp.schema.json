@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://hdp.dev/schemas/0.1/hdp.schema.json",
+  "$id": "urn:hdp:schema:0.1.0",
   "title": "Harness Definition Package resolved definition",
   "description": "Canonical resolved HDP v0.1 definition. YAML is the authoring syntax; this JSON Schema defines its JSON data model.",
   "type": "object",
@@ -325,7 +325,7 @@
     },
     "tool": {
       "type": "object", "additionalProperties": false, "required": ["id", "name", "kind", "purpose", "sideEffects"],
-      "properties": {"id": {"$ref": "#/$defs/stableId"}, "name": {"$ref": "#/$defs/text"}, "kind": {"enum": ["command", "mcp", "openapi", "a2a", "library", "human"]}, "purpose": {"$ref": "#/$defs/text"}, "sideEffects": {"enum": ["none", "workspace", "external"]}, "interfaceRef": {"$ref": "#/$defs/uri"}}
+      "properties": {"id": {"$ref": "#/$defs/stableId"}, "name": {"$ref": "#/$defs/text"}, "kind": {"enum": ["command", "api", "protocol", "library", "human", "custom"]}, "purpose": {"$ref": "#/$defs/text"}, "sideEffects": {"enum": ["none", "workspace", "external"]}, "interfaceRef": {"$ref": "#/$defs/uri"}}
     },
     "externalSystem": {"$ref": "#/$defs/namedStatement"},
     "role": {
@@ -445,7 +445,7 @@
     "testRef": {"type": "object", "additionalProperties": false, "required": ["testId"], "properties": {"testId": {"$ref": "#/$defs/stableId"}}},
     "runtimeProfile": {
       "type": "object", "additionalProperties": false, "required": ["id", "type", "version", "conformance"],
-      "properties": {"id": {"$ref": "#/$defs/slug"}, "type": {"enum": ["codex-software-development", "agent-spec", "custom"]}, "version": {"$ref": "#/$defs/semver"}, "conformance": {"enum": ["core", "development", "controlled", "production", "high-assurance"]}}
+      "properties": {"id": {"$ref": "#/$defs/slug"}, "type": {"$ref": "#/$defs/slug"}, "version": {"$ref": "#/$defs/semver"}, "conformance": {"enum": ["core", "development", "controlled", "production", "high-assurance"]}}
     },
     "deploymentTarget": {
       "type": "object", "additionalProperties": false, "required": ["id", "os", "architecture", "runtime", "dependencyLock"],

@@ -52,6 +52,22 @@ class SemanticValidationTests(unittest.TestCase):
             diagnostics,
         )
 
+    def test_output_contract_can_be_a_trace_component(self) -> None:
+        definition = copy.deepcopy(self.definition)
+        component = next(
+            item
+            for item in definition["traceability"]["nodes"]
+            if item["kind"] == "component"
+        )
+        component["ref"] = "ARTIFACT-SOFTWARE-DIFF"
+
+        diagnostics = semantic_diagnostics(definition, EXAMPLE.parent)
+
+        self.assertFalse(
+            any(item.code == "HDP-SEM-TRACE-REF-MISSING" for item in diagnostics),
+            diagnostics,
+        )
+
     def test_trace_edges_must_use_valid_typed_endpoints(self) -> None:
         definition = copy.deepcopy(self.definition)
         definition["traceability"]["edges"][0]["relation"] = "supports"

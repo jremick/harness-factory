@@ -280,8 +280,11 @@ def _profile_messages(document: Mapping[str, Any]) -> list[str]:
     identifier = profile.get("id")
     if not isinstance(identifier, str) or re.fullmatch(r"^[a-z0-9]+(?:-[a-z0-9]+)*$", identifier) is None:
         messages.append("profile /runtime/profile/id: must be a lowercase hyphenated slug")
-    if profile.get("type") not in {"codex-software-development", "agent-spec", "custom"}:
-        messages.append("profile /runtime/profile/type: unsupported runtime profile type")
+    profile_type = profile.get("type")
+    if not isinstance(profile_type, str) or re.fullmatch(
+        r"^[a-z0-9]+(?:-[a-z0-9]+)*$", profile_type
+    ) is None:
+        messages.append("profile /runtime/profile/type: must be a lowercase hyphenated slug")
     version = profile.get("version")
     if not isinstance(version, str) or re.fullmatch(
         r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$",

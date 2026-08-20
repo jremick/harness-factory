@@ -61,7 +61,29 @@ Every gate reports exactly one of `pass`, `fail`, `blocked`, `not-run`, or
 | Analyser | known/conflicting fixtures, explicit unknowns, precise locations and source digests |
 | Round trip | exact safety projection and capability/state/artifact/behaviour parity |
 | Release | recomputed manifest, subject-bound statements, tamper and traversal failures |
-| Independent review | all critical findings fixed or rejected by recorded rationale |
+| Independent review | all critical/high findings fixed or rejected by recorded rationale |
+
+The current public alpha passes the network-denial and workspace-write probes
+but fails the outside-workspace read probe under Codex `workspace-write` on the
+tested macOS host. The release gate remains fail-closed; see the
+[verification report](verification-report.md) and [ADR 0014](decisions/0014-separate-factory-alpha-from-harness-release-eligibility.md).
+
+Release packaging accepts only the exact manifest-owned generated tree. Every
+raw gate artifact is required to bind the same definition, HIR, target binding
+and harness-tree subject, preventing evidence replay after adding an override or
+other untracked file.
+
+Managed installation uses a cooperative target lock, no-follow
+directory-descriptor-relative replacement, a durable rollback journal, and
+explicit ownership. Only the exact journal created by the current locked
+process can be used for automatic rollback; an unexplained pre-existing journal
+stops both preview and installation for manual recovery. An identical
+pre-existing file is still unowned and is not adopted implicitly.
+
+Release packaging and verification accept only bounded regular files. Symlinks,
+FIFOs, sockets and devices are rejected before any JSON or payload read.
+Required controls are opened nonblocking and no-follow beneath an opened root
+directory descriptor, so a symlinked parent cannot redirect their reads.
 
 ## Round-trip acceptance
 

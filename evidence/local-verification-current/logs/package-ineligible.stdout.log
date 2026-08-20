@@ -1,0 +1,8 @@
+{
+  "assurance": "unsigned-digest-only",
+  "files": 24,
+  "output": "$EVIDENCE/work/release",
+  "payloadDigest": "9f4d03dfca58db8eeaf4a1570a736f00302cdd81d401382cf910a9b1fdf72d79",
+  "releaseEligible": false,
+  "status": "pass"
+}

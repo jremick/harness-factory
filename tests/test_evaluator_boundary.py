@@ -85,6 +85,11 @@ def test_candidate_runs_only_inside_read_only_network_denied_sandbox(tmp_path: P
 def test_sandbox_unavailability_is_explicit_and_fail_closed(tmp_path: Path) -> None:
     boundary = boundary_module.SandboxBoundary(tmp_path)
     boundary.sandbox_executable = tmp_path / "missing-sandbox-exec"
+    reason = (
+        "/usr/bin/sandbox-exec is unavailable"
+        if boundary_module.platform.system() == "Darwin"
+        else "the release-notes evaluator currently requires macOS sandbox-exec"
+    )
 
     assert boundary.describe() == {
         "available": False,
@@ -94,7 +99,7 @@ def test_sandbox_unavailability_is_explicit_and_fail_closed(tmp_path: Path) -> N
         "childProcess": "deny-fork",
         "workspace": "read-only",
         "privateEvaluator": "not allowlisted",
-        "reason": "/usr/bin/sandbox-exec is unavailable",
+        "reason": reason,
     }
     with pytest.raises(boundary_module.SandboxUnavailable):
         boundary.command([sys.executable, "-c", "pass"])

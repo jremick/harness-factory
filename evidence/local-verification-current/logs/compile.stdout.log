@@ -1,0 +1,349 @@
+{
+  "hir_digest": "31ab704d5ea6d2d5a2457840fc48a0abeeda7facd5fb39bf1930ef22dcc827fd",
+  "manifest": {
+    "artifacts": [
+      {
+        "path": ".agents/skills/codex-ai-sdlc/SKILL.md",
+        "sha256": "7ea3a2f76c3811823459bfb6e6393af6ec5584062923c3e5df59c45c1ca274cb",
+        "sourceFields": [
+          "/purpose",
+          "/runtime/profile",
+          "/governance/permissions"
+        ]
+      },
+      {
+        "path": ".agents/skills/codex-ai-sdlc/agents/openai.yaml",
+        "sha256": "48003067c944008babffda3c374e2310af9e82f1e0dd19bae0a1f76fa2b3ea92",
+        "sourceFields": [
+          "/metadata/title",
+          "/purpose",
+          "/runtime/profile"
+        ]
+      },
+      {
+        "path": ".codex/config.toml",
+        "sha256": "698893b42809b4f4186a44d3c5fccb549419f05e8815cd05377d46b00ee50347",
+        "sourceFields": [
+          "target-binding:/settings"
+        ]
+      },
+      {
+        "path": ".hdp/assumptions.md",
+        "sha256": "ecb292594261770457bf197215f9341fb3d0f0fd623d0118982998562ab91750",
+        "sourceFields": [
+          "/operationalContext/assumptions",
+          "/requirements"
+        ]
+      },
+      {
+        "path": ".hdp/compile-plan.json",
+        "sha256": "a542f62dcf1f454f237ab78d521569f63d36f54b296bac91e280cc9a598fd6c7",
+        "sourceFields": [
+          "/",
+          "target-binding:/"
+        ]
+      },
+      {
+        "path": ".hdp/hir.json",
+        "sha256": "dc1a97cd050f2e7d2ce4d7c0eb9b1fa004a40b9f22d92e14fc55f72ab3bd2af9",
+        "sourceFields": [
+          "/"
+        ]
+      },
+      {
+        "path": ".hdp/public-evaluation-contract.json",
+        "sha256": "bc2da4e728d5bb2efaac829d3d9edaebaae47faae81836a5d479e4181b88529f",
+        "sourceFields": [
+          "/evaluation",
+          "/success/acceptanceCriteria"
+        ]
+      },
+      {
+        "path": ".hdp/runtime-policy.json",
+        "sha256": "cd51f25ee954919465335355cd4d9b094ae65ff73f62332588b32da63161df0c",
+        "sourceFields": [
+          "/governance/permissions",
+          "/resources"
+        ]
+      },
+      {
+        "path": ".hdp/source-definition.public.json",
+        "sha256": "8a9125e1f7cc81f9fa089eec910f438e9eef6ab8a1c03e1af2a035e8bdf2e1ea",
+        "sourceFields": [
+          ""
+        ]
+      },
+      {
+        "path": ".hdp/source-map.json",
+        "sha256": "96309a33084e3df8684db77df33f07c5c1a9e2ed7c8d0b0c818dcf4da839f32f",
+        "sourceFields": [
+          "factory-contract:/artifact-source-map"
+        ]
+      },
+      {
+        "path": ".hdp/synthesis-records.json",
+        "sha256": "b5e8343ef5cc3519af7ddf08272e8e3635557b9d39f700e9f27eff89b6d7328b",
+        "sourceFields": [
+          "factory-contract:/bounded-assisted-synthesis"
+        ]
+      },
+      {
+        "path": ".hdp/traceability.json",
+        "sha256": "69e443fcfbac7d90725ecac163626d1353a0d2d046520c1d1af275f7e78a3f97",
+        "sourceFields": [
+          "/traceability"
+        ]
+      },
+      {
+        "path": "AGENTS.md",
+        "sha256": "7d45c5dcd8cdfb496d972b9711d6062d8baf0459609c55f7971f28732b022073",
+        "sourceFields": [
+          "/metadata",
+          "/purpose",
+          "/requirements",
+          "/governance/permissions",
+          "/resources/stoppingConditions",
+          "/failures/recoveryPolicies",
+          "/evaluation/tests"
+        ]
+      },
+      {
+        "path": "HarnessCard.md",
+        "sha256": "500702767cbb99bd5e7aa07ca33496e8a1de6706cac047269ffdd49a26a53be4",
+        "sourceFields": [
+          "/purpose",
+          "/governance",
+          "/evaluation",
+          "/limitations"
+        ]
+      },
+      {
+        "path": "STATE.md",
+        "sha256": "fd85018d36cbbf7dad33e9bf4187d3e900cf8a522d70323b31c3f7a718862572",
+        "sourceFields": [
+          "/orchestration/stages"
+        ]
+      },
+      {
+        "path": "evidence/README.md",
+        "sha256": "c279a13d3ba988230a4e1a2aa9e7aadc2e8c9d6c91efd6f1a61d1a8ff221064f",
+        "sourceFields": [
+          "/observability/events",
+          "/evaluation"
+        ]
+      },
+      {
+        "path": "evidence/ledger.jsonl",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "sourceFields": [
+          "/observability/events"
+        ]
+      },
+      {
+        "path": "roles/role-implementer.md",
+        "sha256": "f63d3656521a9866fdad687eafc50ceeabea4e6d5b6fb35e105cbf12f14e376e",
+        "sourceFields": [
+          "/orchestration/roles/0"
+        ]
+      },
+      {
+        "path": "roles/role-verifier.md",
+        "sha256": "e5b67708d9de26d3f901e6a8e1b653ad0219d1b53eee5c469a67b01c09903b4e",
+        "sourceFields": [
+          "/orchestration/roles/1"
+        ]
+      },
+      {
+        "path": "scripts/harnessctl.py",
+        "sha256": "7bb33c095685a3e63d3285eb1bcb983d1bf2c0e4557ba5c063f847d95f926aad",
+        "sourceFields": [
+          "/governance/permissions",
+          "/observability",
+          "/traceability"
+        ]
+      }
+    ],
+    "generator": {
+      "name": "harness-factory",
+      "version": "0.2.0a1"
+    },
+    "manifestVersion": "1",
+    "manualExtensionRoot": "manual/",
+    "source": {
+      "id": "urn:hdp:example:ai-sdlc",
+      "sha256": "de9a1eb1497369aede8d3e62c809b45cdef76b1ee547a3d4b8401590cb1ba8e6",
+      "version": "1.0.0"
+    },
+    "staleGeneratedArtifactsRetained": []
+  },
+  "output": "$EVIDENCE/work/generated-harness",
+  "stages": [
+    {
+      "details": {
+        "source": "$REPOSITORY/examples/software-development/hdp.yaml"
+      },
+      "stage": "ingest",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "diagnostics": []
+      },
+      "stage": "schema-validation",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "diagnostics": []
+      },
+      "stage": "semantic-validation",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "hirDigest": "31ab704d5ea6d2d5a2457840fc48a0abeeda7facd5fb39bf1930ef22dcc827fd",
+        "hirVersion": "0.1.0"
+      },
+      "stage": "normalisation",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "adapter": "codex",
+        "adapterVersion": "0.1.0",
+        "artifacts": 5
+      },
+      "stage": "compilation-planning",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "authority": "none",
+        "requests": 0
+      },
+      "stage": "bounded-assisted-synthesis",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "artifactCount": 20
+      },
+      "stage": "deterministic-rendering",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "checks": [
+          {
+            "id": "output-tree-regular-files",
+            "passed": true,
+            "violations": []
+          },
+          {
+            "id": "file:AGENTS.md",
+            "passed": true
+          },
+          {
+            "id": "file:.codex/config.toml",
+            "passed": true
+          },
+          {
+            "id": "file:.hdp/hir.json",
+            "passed": true
+          },
+          {
+            "id": "file:HarnessCard.md",
+            "passed": true
+          },
+          {
+            "id": "agent-skill-structure",
+            "passed": true
+          },
+          {
+            "bytes": 3314,
+            "id": "agents-size",
+            "passed": true
+          },
+          {
+            "id": "danger-full-access-denied",
+            "passed": true
+          },
+          {
+            "id": "config-exact",
+            "passed": true
+          },
+          {
+            "error": null,
+            "id": "hir-exact",
+            "passed": true
+          },
+          {
+            "id": "hir-subject",
+            "passed": true
+          },
+          {
+            "error": null,
+            "id": "hard-budget-binding",
+            "passed": true,
+            "unsupported": []
+          },
+          {
+            "error": null,
+            "id": "external-control-binding",
+            "passed": true,
+            "unsupported": []
+          },
+          {
+            "error": null,
+            "id": "source-map-exact",
+            "passed": true
+          },
+          {
+            "error": null,
+            "id": "manifest-exact",
+            "passed": true
+          },
+          {
+            "id": "generated-artifacts-exact",
+            "mismatches": [],
+            "passed": true
+          },
+          {
+            "id": "source-map-total",
+            "passed": true,
+            "unmapped": []
+          },
+          {
+            "findings": [],
+            "id": "generated-secret-patterns",
+            "passed": true
+          }
+        ]
+      },
+      "stage": "static-conformance",
+      "status": "pass"
+    },
+    {
+      "details": {
+        "reason": "run explicitly with the target task runner"
+      },
+      "stage": "sandboxed-behavioural-conformance",
+      "status": "not-run"
+    },
+    {
+      "details": {
+        "reason": "run hdp package after behavioural evidence is available"
+      },
+      "stage": "packaging",
+      "status": "not-run"
+    },
+    {
+      "details": {
+        "reason": "created by hdp package"
+      },
+      "stage": "attestation",
+      "status": "not-run"
+    }
+  ],
+  "status": "pass"
+}

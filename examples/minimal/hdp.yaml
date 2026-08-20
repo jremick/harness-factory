@@ -165,7 +165,7 @@ evaluation:
   adversarialTests: [{testId: TEST-EXTERNAL}]
   regressionTests: [{testId: TEST-EXTERNAL}]
 runtime:
-  profile: {id: minimal-controlled, type: codex-software-development, version: 1.0.0, conformance: controlled}
+  profile: {id: minimal-controlled, type: general, version: 1.0.0, conformance: controlled}
   deploymentTargets:
     - {id: RUNTIME-LOCAL, os: portable, architecture: portable, runtime: Python 3.12, dependencyLock: uv.lock}
   sandbox: {mode: os, network: deny, filesystemPolicy: workspace-write}
