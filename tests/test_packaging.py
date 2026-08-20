@@ -1,10 +1,12 @@
 import copy
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
 
 from hdp.compiler import compile_hdp
+from hdp.diagnostics import HdpGenerationError
 from hdp.packaging import package_release, verify_release
 
 
@@ -75,6 +77,35 @@ class PackagingTests(unittest.TestCase):
                 self.assertFalse(result["verified"], (name, changed))
                 self.assertTrue(any("attestation" in error for error in result["errors"]))
                 path.write_text(json.dumps(original), encoding="utf-8")
+
+    def test_verifier_rejects_symlink_before_reading_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            release = self.make_release(Path(temporary))
+            manifest = release / "release-manifest.json"
+            manifest.unlink()
+            os.symlink("/dev/zero", manifest)
+
+            result = verify_release(release)
+
+            self.assertFalse(result["verified"])
+            self.assertEqual(result["errors"], ["symlink is not permitted: release-manifest.json"])
+
+    def test_packager_and_verifier_reject_fifo_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            harness = root / "harness"
+            compile_hdp(DEFINITION, BINDING, harness)
+            os.mkfifo(harness / "untracked-fifo")
+            with self.assertRaisesRegex(HdpGenerationError, "non-regular"):
+                package_release(harness, DEFINITION, BINDING, root / "release")
+
+            (harness / "untracked-fifo").unlink()
+            release = root / "release-valid"
+            package_release(harness, DEFINITION, BINDING, release)
+            os.mkfifo(release / "unexpected-fifo")
+            result = verify_release(release)
+            self.assertFalse(result["verified"])
+            self.assertIn("non-regular release entry", result["errors"][0])
 
 
 if __name__ == "__main__":

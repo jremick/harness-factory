@@ -8,7 +8,7 @@ Status: factory candidate verified; generated-harness release ineligible
 | AC2 | Negative verification and `scripts/verify-all.sh` | pass | broad deterministic gates rerun after fixture-manifest repair |
 | AC3 | Simplified CLI and clean consumer | pass | isolated built-wheel smoke |
 | AC4 | Managed install safety | pass | manifest ownership, digest, symlink, race and stale-file tests |
-| AC5 | Existing regression suites | pass | 136 pytest cases plus 3 subtests; 14 software-E2E tests |
+| AC5 | Existing regression suites | pass | 139 pytest cases plus 3 subtests; 14 software-E2E tests |
 | AC6 | Public-surface audit | pass | local links, private markers and pinned Actions checked |
 | AC7 | Default-branch CI | pending | authoritative read-back required after merge |
 | AC8a | Four-task live evaluation | pass | feature, defect, refactor and policy-block evaluator passes |

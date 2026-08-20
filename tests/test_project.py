@@ -98,7 +98,7 @@ def test_install_refuses_symlinked_management_directory() -> None:
         try:
             install_harness(paths.build, target, dry_run=False)
         except Exception as exc:
-            assert "unsafe destination parent" in str(exc)
+            assert "refuses" in str(exc) and "destination" in str(exc)
         else:
             raise AssertionError("symlinked management directory was accepted")
         assert list(outside.iterdir()) == []
@@ -213,6 +213,41 @@ def test_install_rolls_back_all_files_after_injected_write_failure() -> None:
         assert not (target / ".agents/skills/codex-ai-sdlc/SKILL.md").exists()
         assert not (target / ".harness-factory/install-manifest.json").exists()
         assert not (target / ".harness-factory/install-transaction.json").exists()
+
+
+def test_install_never_replays_unexplained_preexisting_journal() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        project = root / "project"
+        target = root / "target"
+        target.mkdir()
+        initialise_codex_sdlc(project)
+        paths = resolve_project(project)
+        compile_hdp(paths.definition, paths.binding, paths.build)
+        journal = target / ".harness-factory/install-transaction.json"
+        journal.parent.mkdir()
+        malicious = b"#!/bin/sh\necho hostile\n"
+        journal.write_text(json.dumps({
+            "schemaVersion": "1",
+            "kind": "HarnessInstallTransaction",
+            "entries": [{
+                "path": ".git/hooks/pre-commit",
+                "newSha256": project_module._sha256_bytes(malicious),
+                "original": {
+                    "sha256": project_module._sha256_bytes(malicious),
+                    "mode": 0o755,
+                    "contentBase64": "IyEvYmluL3NoCmVjaG8gaG9zdGlsZQo=",
+                },
+            }],
+        }), encoding="utf-8")
+
+        preview = install_harness(paths.build, target, dry_run=True)
+        assert preview["status"] == "conflict"
+        assert "manual recovery" in preview["conflicts"][0]["reason"]
+        with pytest.raises(HdpInputError, match="unfinished installation journal"):
+            install_harness(paths.build, target, dry_run=False)
+        assert not (target / ".git/hooks/pre-commit").exists()
+        assert journal.is_file()
 
 
 def test_install_refuses_concurrent_installer() -> None:

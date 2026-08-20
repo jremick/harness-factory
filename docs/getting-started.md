@@ -60,6 +60,10 @@ previously managed file, so removal requires an explicit review rather than
 leaving stale instructions silently active. It records ownership in
 `.harness-factory/install-manifest.json` inside the target repository.
 
+If an interrupted process leaves `install-transaction.json`, later installs and
+dry-runs stop for explicit manual recovery. The installer never replays a
+pre-existing journal supplied by the target checkout.
+
 Review generated instructions and commit them through the target repository's
 normal change-review process. The outer Codex runtime remains responsible for
 actual sandbox enforcement.

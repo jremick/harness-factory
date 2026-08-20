@@ -75,8 +75,13 @@ other untracked file.
 
 Managed installation uses a cooperative target lock, no-follow
 directory-descriptor-relative replacement, a durable rollback journal, and
-explicit ownership. An identical pre-existing file is still unowned and is not
-adopted implicitly.
+explicit ownership. Only the exact journal created by the current locked
+process can be used for automatic rollback; an unexplained pre-existing journal
+stops both preview and installation for manual recovery. An identical
+pre-existing file is still unowned and is not adopted implicitly.
+
+Release packaging and verification accept only bounded regular files. Symlinks,
+FIFOs, sockets and devices are rejected before any JSON or payload read.
 
 ## Round-trip acceptance
 

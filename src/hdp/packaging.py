@@ -35,6 +35,8 @@ _IGNORED_TREE_PARTS = frozenset({"__pycache__", ".pytest_cache", ".git"})
 _STATEMENT_TYPE = "https://in-toto.io/Statement/v1"
 _BUILD_PREDICATE_TYPE = "https://harnessfactory.dev/attestation/build/v0.1"
 _CONFORMANCE_PREDICATE_TYPE = "https://harnessfactory.dev/attestation/conformance/v0.1"
+_MAX_RELEASE_FILE_BYTES = 16 * 1024 * 1024
+_MAX_JSON_BYTES = 8 * 1024 * 1024
 
 
 def _sha256_bytes(value: bytes) -> str:
@@ -45,20 +47,56 @@ def _included(relative: Path) -> bool:
     return not any(part in _IGNORED_TREE_PARTS for part in relative.parts)
 
 
+def _read_regular_bytes(path: Path, label: str, *, maximum: int) -> bytes:
+    try:
+        descriptor = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    except OSError as exc:
+        raise HdpGenerationError(f"{label} is missing or unsafe: {exc}") from exc
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise HdpGenerationError(f"{label} must be a regular file")
+        if metadata.st_size > maximum:
+            raise HdpGenerationError(f"{label} exceeds the {maximum}-byte limit")
+        chunks: list[bytes] = []
+        remaining = maximum + 1
+        while remaining:
+            chunk = os.read(descriptor, min(1024 * 1024, remaining))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        content = b"".join(chunks)
+        if len(content) > maximum or len(content) != metadata.st_size:
+            raise HdpGenerationError(f"{label} changed or exceeded its size limit while read")
+        return content
+    finally:
+        os.close(descriptor)
+
+
 def _copy_regular_tree(source: Path, target: Path) -> None:
     for path in sorted(source.rglob("*")):
         relative = path.relative_to(source)
         if not _included(relative):
             continue
         destination = target / relative
-        if path.is_symlink():
+        metadata = path.lstat()
+        if stat.S_ISLNK(metadata.st_mode):
             raise HdpGenerationError(f"release payload cannot contain symlink: {relative}")
-        if path.is_dir():
+        if stat.S_ISDIR(metadata.st_mode):
             destination.mkdir(parents=True, exist_ok=True)
             continue
+        if not stat.S_ISREG(metadata.st_mode):
+            raise HdpGenerationError(
+                f"release payload cannot contain non-regular entry: {relative}"
+            )
         destination.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(path, destination)
-        os.chmod(destination, stat.S_IMODE(path.stat().st_mode))
+        destination.write_bytes(
+            _read_regular_bytes(
+                path, f"release payload source {relative}", maximum=_MAX_RELEASE_FILE_BYTES
+            )
+        )
+        os.chmod(destination, stat.S_IMODE(metadata.st_mode))
 
 
 def _entries(root: Path, *, ignore_ephemeral: bool = False) -> list[dict[str, Any]]:
@@ -67,16 +105,24 @@ def _entries(root: Path, *, ignore_ephemeral: bool = False) -> list[dict[str, An
         relative_path = path.relative_to(root)
         if ignore_ephemeral and not _included(relative_path):
             continue
-        if path.is_symlink():
+        metadata = path.lstat()
+        if stat.S_ISLNK(metadata.st_mode):
             raise HdpGenerationError(f"release payload cannot contain symlink: {relative_path}")
-        if not path.is_file():
+        if stat.S_ISDIR(metadata.st_mode):
             continue
+        if not stat.S_ISREG(metadata.st_mode):
+            raise HdpGenerationError(
+                f"release payload cannot contain non-regular entry: {relative_path}"
+            )
         relative = relative_path.as_posix()
-        mode = stat.S_IMODE(path.stat().st_mode)
+        content = _read_regular_bytes(
+            path, f"release payload file {relative}", maximum=_MAX_RELEASE_FILE_BYTES
+        )
+        mode = stat.S_IMODE(metadata.st_mode)
         records.append({
             "path": relative,
-            "sha256": _sha256_bytes(path.read_bytes()),
-            "size": path.stat().st_size,
+            "sha256": _sha256_bytes(content),
+            "size": len(content),
             "executable": bool(mode & 0o111),
             "mediaType": mimetypes.guess_type(relative)[0] or "application/octet-stream",
         })
@@ -89,8 +135,9 @@ def _tree_digest(root: Path, *, ignore_ephemeral: bool = False) -> str:
 
 def _read_json(path: Path, label: str) -> Any:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        content = _read_regular_bytes(path, label, maximum=_MAX_JSON_BYTES)
+        return json.loads(content.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise HdpGenerationError(f"{label} does not match valid JSON: {exc}") from exc
 
 
@@ -182,9 +229,16 @@ def _validate_generated_harness(
         if not _included(relative_path):
             continue
         relative = relative_path.as_posix()
-        if path.is_symlink():
+        metadata = path.lstat()
+        if stat.S_ISLNK(metadata.st_mode):
             raise HdpGenerationError(f"generated harness cannot contain symlink: {relative}")
-        if path.is_file():
+        if stat.S_ISDIR(metadata.st_mode):
+            continue
+        if not stat.S_ISREG(metadata.st_mode):
+            raise HdpGenerationError(
+                f"generated harness cannot contain non-regular entry: {relative}"
+            )
+        if stat.S_ISREG(metadata.st_mode):
             actual_paths.add(relative)
     actual_paths.discard(".hdp/manifest.json")
     untracked = sorted(actual_paths - tracked_paths)
@@ -394,15 +448,32 @@ def _load_release_subjects(
 
 
 def verify_release(release: Path) -> dict[str, Any]:
-    root_is_symlink = release.is_symlink()
-    release = release.resolve()
-    errors: list[str] = ["release root cannot be a symlink"] if root_is_symlink else []
-    if release.is_dir():
-        for path in sorted(release.rglob("*")):
-            if path.is_symlink():
-                errors.append(
-                    f"symlink is not permitted: {path.relative_to(release).as_posix()}"
-                )
+    lexical = release.expanduser().absolute()
+    if lexical.is_symlink():
+        return {
+            "status": "fail", "verified": False, "releaseEligible": False,
+            "errors": ["release root cannot be a symlink"],
+        }
+    release = lexical.resolve()
+    if not release.is_dir():
+        return {
+            "status": "fail", "verified": False, "releaseEligible": False,
+            "errors": ["release root must be a directory"],
+        }
+    for path in sorted(release.rglob("*")):
+        relative = path.relative_to(release).as_posix()
+        metadata = path.lstat()
+        if stat.S_ISLNK(metadata.st_mode):
+            return {
+                "status": "fail", "verified": False, "releaseEligible": False,
+                "errors": [f"symlink is not permitted: {relative}"],
+            }
+        if not (stat.S_ISREG(metadata.st_mode) or stat.S_ISDIR(metadata.st_mode)):
+            return {
+                "status": "fail", "verified": False, "releaseEligible": False,
+                "errors": [f"non-regular release entry is not permitted: {relative}"],
+            }
+    errors: list[str] = []
     try:
         manifest = _read_json(release / "release-manifest.json", "release manifest")
     except HdpGenerationError as exc:
@@ -439,24 +510,27 @@ def verify_release(release: Path) -> dict[str, Any]:
 
     payload = release / "payload"
     actual_paths: set[str] = set()
-    has_symlink = False
     if not payload.is_dir():
         errors.append("missing payload directory")
     else:
         for path in sorted(payload.rglob("*")):
             relative = path.relative_to(payload).as_posix()
-            if path.is_symlink():
-                has_symlink = True
-                errors.append(f"symlink is not permitted: {relative}")
-            elif path.is_file():
+            if path.is_file():
                 actual_paths.add(relative)
                 record = expected.get(relative)
                 if record is None:
                     errors.append(f"unexpected payload file: {relative}")
                     continue
-                if _sha256_bytes(path.read_bytes()) != record.get("sha256"):
+                try:
+                    content = _read_regular_bytes(
+                        path, f"payload file {relative}", maximum=_MAX_RELEASE_FILE_BYTES
+                    )
+                except HdpGenerationError as exc:
+                    errors.append(str(exc))
+                    continue
+                if _sha256_bytes(content) != record.get("sha256"):
                     errors.append(f"content digest mismatch: {relative}")
-                if path.stat().st_size != record.get("size"):
+                if len(content) != record.get("size"):
                     errors.append(f"size mismatch: {relative}")
                 executable = bool(stat.S_IMODE(path.stat().st_mode) & 0o111)
                 if executable != record.get("executable"):
@@ -464,7 +538,7 @@ def verify_release(release: Path) -> dict[str, Any]:
     for missing in sorted(set(expected) - actual_paths):
         errors.append(f"missing payload file: {missing}")
     try:
-        records = _entries(payload) if payload.is_dir() and not has_symlink else []
+        records = _entries(payload) if payload.is_dir() else []
     except HdpGenerationError as exc:
         errors.append(str(exc))
         records = []

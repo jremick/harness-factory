@@ -27,6 +27,7 @@ INSTALL_LOCK = Path(".harness-factory/install.lock")
 INSTALL_TRANSACTION = Path(".harness-factory/install-transaction.json")
 _DIRECTORY_FLAGS = os.O_RDONLY | os.O_DIRECTORY | getattr(os, "O_NOFOLLOW", 0)
 _FILE_NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
+_MAX_TRANSACTION_FILE_BYTES = 4 * 1024 * 1024
 
 
 def _sha256_bytes(value: bytes) -> str:
@@ -53,6 +54,8 @@ def _safe_relative(value: str) -> Path:
         raise HdpInputError(f"unsafe managed artifact path: {value!r}")
     if candidate.as_posix() in {"", "."}:
         raise HdpInputError(f"unsafe managed artifact path: {value!r}")
+    if candidate.parts[0] in {".git", ".harness-factory"}:
+        raise HdpInputError(f"managed artifact path uses a reserved root: {value!r}")
     return candidate
 
 
@@ -239,10 +242,12 @@ def _journal_entry(path: str, snapshot: dict[str, Any] | None, new_digest: str) 
     return {"path": path, "newSha256": new_digest, "original": original}
 
 
-def _recover_transaction(root_fd: int) -> None:
+def _recover_transaction(root_fd: int, *, expected_sha256: str) -> None:
     snapshot = _snapshot_at(root_fd, INSTALL_TRANSACTION)
     if snapshot is None:
-        return
+        raise HdpInputError("installation transaction journal disappeared before recovery")
+    if snapshot["sha256"] != expected_sha256:
+        raise HdpInputError("installation transaction journal changed before recovery")
     try:
         value = json.loads(snapshot["content"].decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -250,14 +255,30 @@ def _recover_transaction(root_fd: int) -> None:
     entries = value.get("entries") if isinstance(value, dict) else None
     if (
         not isinstance(value, dict)
+        or set(value) != {"schemaVersion", "kind", "entries"}
+        or value.get("schemaVersion") != "1"
         or value.get("kind") != "HarnessInstallTransaction"
         or not isinstance(entries, list)
     ):
         raise HdpInputError("installation transaction journal is malformed")
+    seen: set[str] = set()
     for item in reversed(entries):
-        if not isinstance(item, dict) or not isinstance(item.get("path"), str):
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"path", "newSha256", "original"}
+            or not isinstance(item.get("path"), str)
+            or not isinstance(item.get("newSha256"), str)
+            or len(item["newSha256"]) != 64
+            or any(character not in "0123456789abcdef" for character in item["newSha256"])
+            or item["path"] in seen
+        ):
             raise HdpInputError("installation transaction journal is malformed")
-        relative = _safe_relative(item["path"])
+        seen.add(item["path"])
+        relative = (
+            INSTALL_MANIFEST
+            if item["path"] == INSTALL_MANIFEST.as_posix()
+            else _safe_relative(item["path"])
+        )
         new_digest = item.get("newSha256")
         original = item.get("original")
         current = _snapshot_at(root_fd, relative)
@@ -273,6 +294,10 @@ def _recover_transaction(root_fd: int) -> None:
             mode = int(original["mode"])
         except (KeyError, TypeError, ValueError) as exc:
             raise HdpInputError("installation transaction journal is malformed") from exc
+        if set(original) != {"sha256", "mode", "contentBase64"}:
+            raise HdpInputError("installation transaction journal is malformed")
+        if len(content) > _MAX_TRANSACTION_FILE_BYTES or not 0 <= mode <= 0o777:
+            raise HdpInputError("installation transaction journal backup is unsafe")
         if _sha256_bytes(content) != original_digest:
             raise HdpInputError("installation transaction journal backup digest is invalid")
         if current_digest not in {None, new_digest, original_digest}:
@@ -428,10 +453,27 @@ def _managed_sources(harness: Path) -> tuple[dict[str, Any], list[tuple[Path, Pa
 def install_harness(harness: Path, target: Path, *, dry_run: bool) -> dict[str, Any]:
     target = _safe_root(target, label="target repository")
     manifest, sources = _managed_sources(harness)
+    pending_journal = _safe_destination(target, INSTALL_TRANSACTION)
+    if dry_run and pending_journal.exists():
+        return {
+            "status": "conflict",
+            "dryRun": True,
+            "target": str(target),
+            "source": str(Path(harness).resolve()),
+            "sourceDefinition": manifest.get("source", {}),
+            "actions": [],
+            "conflicts": [{
+                "path": INSTALL_TRANSACTION.as_posix(),
+                "reason": "an unfinished installation requires explicit manual recovery",
+            }],
+        }
     lock_context = nullcontext(None) if dry_run else _target_lock(target)
     with lock_context as root_fd:
-        if root_fd is not None:
-            _recover_transaction(root_fd)
+        if root_fd is not None and _snapshot_at(root_fd, INSTALL_TRANSACTION) is not None:
+            raise HdpInputError(
+                "an unfinished installation journal exists; inspect the target and "
+                "remove it only after explicit manual recovery"
+            )
 
         install_manifest_path = _safe_destination(target, INSTALL_MANIFEST)
         previous: dict[str, Any] = {}
@@ -575,6 +617,7 @@ def install_harness(harness: Path, target: Path, *, dry_run: bool) -> dict[str, 
             mode=0o600,
             allowed_current={None},
         )
+        journal_digest = _sha256_bytes(journal)
         try:
             for write in writes:
                 _atomic_write_at(
@@ -585,7 +628,7 @@ def install_harness(harness: Path, target: Path, *, dry_run: bool) -> dict[str, 
                     allowed_current=write["allowed"],
                 )
         except Exception:
-            _recover_transaction(root_fd)
+            _recover_transaction(root_fd, expected_sha256=journal_digest)
             raise
         transaction = _snapshot_at(root_fd, INSTALL_TRANSACTION)
         _unlink_at(
