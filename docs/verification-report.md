@@ -31,7 +31,8 @@ harness. See [ADR 0014](decisions/0014-separate-factory-alpha-from-harness-relea
 | Legacy software-E2E generator suite | pass after manifest repair | 14 unittest cases |
 | Deterministic compile, static, analyse, exact diff, ineligible package, verify and tamper path | pass | `evidence/local-verification-current/verification.json` |
 | Built-wheel consumer path | pass | `scripts/smoke-consumer.sh` |
-| Public repository surface | pass | `tools/check_public_surface.py`, 246 candidate files before the final review/report projection; Gitleaks 8.30.1 found no leaks |
+| Public repository surface | pass | `tools/check_public_surface.py`, 250 files in the frozen publication projection; Gitleaks 8.30.1 found no leaks |
+| Independent adversarial review | pass after remediation | ADV-001 through ADV-018 closed; no unresolved critical or high finding |
 | Live feature task | pass | 82.706 s; Codex 0; evaluator 0; 26 trace events |
 | Live defect-fix task | pass | 78.625 s; Codex 0; evaluator 0; 25 trace events |
 | Live constrained refactor | pass | 85.077 s; Codex 0; evaluator 0; 25 trace events |

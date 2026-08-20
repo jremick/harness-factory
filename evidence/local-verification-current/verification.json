@@ -1,0 +1,263 @@
+{
+  "artifacts": {
+    "analysis": "work/analysis",
+    "generatedHarness": "work/generated-harness",
+    "release": "work/release",
+    "tamperedRelease": "work/release-tampered"
+  },
+  "environment": {
+    "docker": "Docker version 29.5.3, build d1c06ef",
+    "git": "git version 2.50.1 (Apple Git-155)",
+    "modelExecution": "not-applicable-local-deterministic-gates",
+    "platform": "macOS-26.5.2-arm64-arm-64bit",
+    "python": "3.12.13",
+    "uv": "uv 0.11.25 (Homebrew 2026-06-26 aarch64-apple-darwin)"
+  },
+  "gates": [
+    {
+      "command": [
+        "$REPOSITORY/.venv/bin/python3",
+        "-m",
+        "pytest",
+        "-q"
+      ],
+      "durationSeconds": 24.264,
+      "exitCode": 0,
+      "expectedExitCodes": [
+        0
+      ],
+      "id": "pytest",
+      "passed": true,
+      "stderr": {
+        "path": "logs/pytest.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stdout": {
+        "path": "logs/pytest.stdout.log",
+        "sha256": "b80ad1cf6ed5260f48c1e7f66a311be67cf0783895d94c3d5e8b75f36437fa52"
+      }
+    },
+    {
+      "command": [
+        "$REPOSITORY/.venv/bin/hdp",
+        "validate",
+        "$REPOSITORY/examples/software-development/hdp.yaml",
+        "--json"
+      ],
+      "durationSeconds": 0.294,
+      "exitCode": 0,
+      "expectedExitCodes": [
+        0
+      ],
+      "id": "validate",
+      "passed": true,
+      "stderr": {
+        "path": "logs/validate.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stdout": {
+        "path": "logs/validate.stdout.log",
+        "sha256": "f24329830ed6028b1f32d67465c56c115302cdfacfe3cd7568de7ff106da11dd"
+      }
+    },
+    {
+      "command": [
+        "$REPOSITORY/.venv/bin/hdp",
+        "compile",
+        "$REPOSITORY/examples/software-development/hdp.yaml",
+        "--binding",
+        "$REPOSITORY/examples/software-development/bindings/codex.yaml",
+        "--output",
+        "$EVIDENCE/work/generated-harness"
+      ],
+      "durationSeconds": 0.269,
+      "exitCode": 0,
+      "expectedExitCodes": [
+        0
+      ],
+      "id": "compile",
+      "passed": true,
+      "stderr": {
+        "path": "logs/compile.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stdout": {
+        "path": "logs/compile.stdout.log",
+        "sha256": "5e9de2df3deb0511e56f8c33322fdb69f049c8b909dd4ac73e11fb64ee06dccb"
+      }
+    },
+    {
+      "command": [
+        "$REPOSITORY/.venv/bin/hdp",
+        "test",
+        "$EVIDENCE/work/generated-harness",
+        "--definition",
+        "$REPOSITORY/examples/software-development/hdp.yaml",
+        "--binding",
+        "$REPOSITORY/examples/software-development/bindings/codex.yaml"
+      ],
+      "durationSeconds": 0.215,
+      "exitCode": 0,
+      "expectedExitCodes": [
+        0
+      ],
+      "id": "static-conformance",
+      "passed": true,
+      "stderr": {
+        "path": "logs/static-conformance.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stdout": {
+        "path": "logs/static-conformance.stdout.log",
+        "sha256": "f18477bec5b578e3d742c858005836573d93bc72850d258f4e7af3ea082ed793"
+      }
+    },
+    {
+      "command": [
+        "$REPOSITORY/.venv/bin/hdp",
+        "analyse",
+        "$EVIDENCE/work/generated-harness",
+        "--output",
+        "$EVIDENCE/work/analysis"
+      ],
+      "durationSeconds": 0.265,
+      "exitCode": 0,
+      "expectedExitCodes": [
+        0
+      ],
+      "id": "analyse",
+      "passed": true,
+      "stderr": {
+        "path": "logs/analyse.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stdout": {
+        "path": "logs/analyse.stdout.log",
+        "sha256": "e0f6900c06da164311c5fac5757de49542d1cb6da2be48ff53d52f17dedbc4d8"
+      }
+    },
+    {
+      "command": [
+        "$REPOSITORY/.venv/bin/hdp",
+        "diff",
+        "$REPOSITORY/examples/software-development/hdp.yaml",
+        "$EVIDENCE/work/analysis/hdp.reconstructed.yaml"
+      ],
+      "durationSeconds": 0.28,
+      "exitCode": 0,
+      "expectedExitCodes": [
+        0
+      ],
+      "id": "round-trip-diff",
+      "passed": true,
+      "stderr": {
+        "path": "logs/round-trip-diff.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stdout": {
+        "path": "logs/round-trip-diff.stdout.log",
+        "sha256": "2a56b7e5bbded403c607541d8ec035a5e28f654519dbbf87f2068bb083bf83cd"
+      }
+    },
+    {
+      "command": [
+        "$REPOSITORY/.venv/bin/hdp",
+        "package",
+        "$EVIDENCE/work/generated-harness",
+        "--definition",
+        "$REPOSITORY/examples/software-development/hdp.yaml",
+        "--binding",
+        "$REPOSITORY/examples/software-development/bindings/codex.yaml",
+        "--output",
+        "$EVIDENCE/work/release"
+      ],
+      "durationSeconds": 0.216,
+      "exitCode": 0,
+      "expectedExitCodes": [
+        0
+      ],
+      "id": "package-ineligible",
+      "passed": true,
+      "stderr": {
+        "path": "logs/package-ineligible.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stdout": {
+        "path": "logs/package-ineligible.stdout.log",
+        "sha256": "6064adf0f4a7124d08efc4f90069f46e4227efc6dbf2a9e1804a2e2761cf8ccc"
+      }
+    },
+    {
+      "command": [
+        "$REPOSITORY/.venv/bin/hdp",
+        "verify-release",
+        "$EVIDENCE/work/release"
+      ],
+      "durationSeconds": 0.123,
+      "exitCode": 0,
+      "expectedExitCodes": [
+        0
+      ],
+      "id": "verify-release",
+      "passed": true,
+      "stderr": {
+        "path": "logs/verify-release.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stdout": {
+        "path": "logs/verify-release.stdout.log",
+        "sha256": "2d4f7a5d23f6e07f3b723f23356195861d163815f95ccac524ad242ad8ed700d"
+      }
+    },
+    {
+      "command": [
+        "$REPOSITORY/.venv/bin/hdp",
+        "verify-release",
+        "$EVIDENCE/work/release-tampered"
+      ],
+      "durationSeconds": 0.121,
+      "exitCode": 2,
+      "expectedExitCodes": [
+        2
+      ],
+      "id": "tamper-detected",
+      "passed": true,
+      "stderr": {
+        "path": "logs/tamper-detected.stderr.log",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stdout": {
+        "path": "logs/tamper-detected.stdout.log",
+        "sha256": "d768a300658880fc17a42b8c0dae21a954fd25f3b6c014fcbfc84d9ad7694159"
+      }
+    }
+  ],
+  "kind": "LocalVerificationEvidence",
+  "logProjection": "machine-local repository and evidence roots replaced with portable markers",
+  "passed": true,
+  "recordedAt": "2026-08-20T02:43:39.740927+00:00",
+  "releaseEligibilityReason": "live behavioural conformance is a separate mandatory gate",
+  "releaseEligible": false,
+  "schemaVersion": "0.1.0",
+  "sourceSnapshot": {
+    "binding": "git-commit",
+    "commit": "65148468a0cdf4e6f192c76de3447e655a6e719c",
+    "dirty": false
+  },
+  "subject": {
+    "binding": {
+      "sha256": "8d5d98510faeac2ae086815af4bdaaeebaf914bcb0dd5d29b02dac85ead904a0",
+      "target": "codex"
+    },
+    "definition": {
+      "id": "urn:hdp:example:ai-sdlc",
+      "sha256": "de9a1eb1497369aede8d3e62c809b45cdef76b1ee547a3d4b8401590cb1ba8e6"
+    },
+    "harness": {
+      "sha256": "f07ab4d2cbe9966ee7d3d2821ebfe41b9ef24d2164cc8e75dad9f96944b15b63"
+    },
+    "hir": {
+      "sha256": "31ab704d5ea6d2d5a2457840fc48a0abeeda7facd5fb39bf1930ef22dcc827fd"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "evidenceRecords": 621,
+  "evidencedRequiredFamilies": 25,
+  "inventoryFiles": 21,
+  "reconstructionStatus": "implementation-aligned-draft",
+  "requiredFamilies": 25,
+  "semanticDiagnostics": [],
+  "semanticStatus": "pass",
+  "sourceMode": "embedded-generated-source-definition",
+  "structuralDiagnostics": [],
+  "structuralStatus": "pass",
+  "subject": {
+    "binding": {
+      "sha256": "8d5d98510faeac2ae086815af4bdaaeebaf914bcb0dd5d29b02dac85ead904a0",
+      "target": "codex"
+    },
+    "definition": {
+      "id": "urn:hdp:example:ai-sdlc",
+      "sha256": "de9a1eb1497369aede8d3e62c809b45cdef76b1ee547a3d4b8401590cb1ba8e6"
+    },
+    "harness": {
+      "sha256": "f07ab4d2cbe9966ee7d3d2821ebfe41b9ef24d2164cc8e75dad9f96944b15b63"
+    },
+    "hir": {
+      "sha256": "31ab704d5ea6d2d5a2457840fc48a0abeeda7facd5fb39bf1930ef22dcc827fd"
+    }
+  },
+  "unknownRequiredFamilies": []
+}

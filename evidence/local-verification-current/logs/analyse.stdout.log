@@ -1,0 +1,11 @@
+{
+  "evidenceRecords": 621,
+  "fieldAssessmentCount": 621,
+  "inventoryFiles": 21,
+  "output": "$EVIDENCE/work/analysis",
+  "semanticStatus": "pass",
+  "sourceMode": "embedded-generated-source-definition",
+  "structuralStatus": "pass",
+  "unknownRequiredFamilies": [],
+  "valid": true
+}

@@ -1,0 +1,89 @@
+{
+  "checks": [
+    {
+      "id": "output-tree-regular-files",
+      "passed": true,
+      "violations": []
+    },
+    {
+      "id": "file:AGENTS.md",
+      "passed": true
+    },
+    {
+      "id": "file:.codex/config.toml",
+      "passed": true
+    },
+    {
+      "id": "file:.hdp/hir.json",
+      "passed": true
+    },
+    {
+      "id": "file:HarnessCard.md",
+      "passed": true
+    },
+    {
+      "id": "agent-skill-structure",
+      "passed": true
+    },
+    {
+      "bytes": 3314,
+      "id": "agents-size",
+      "passed": true
+    },
+    {
+      "id": "danger-full-access-denied",
+      "passed": true
+    },
+    {
+      "id": "config-exact",
+      "passed": true
+    },
+    {
+      "error": null,
+      "id": "hir-exact",
+      "passed": true
+    },
+    {
+      "id": "hir-subject",
+      "passed": true
+    },
+    {
+      "error": null,
+      "id": "hard-budget-binding",
+      "passed": true,
+      "unsupported": []
+    },
+    {
+      "error": null,
+      "id": "external-control-binding",
+      "passed": true,
+      "unsupported": []
+    },
+    {
+      "error": null,
+      "id": "source-map-exact",
+      "passed": true
+    },
+    {
+      "error": null,
+      "id": "manifest-exact",
+      "passed": true
+    },
+    {
+      "id": "generated-artifacts-exact",
+      "mismatches": [],
+      "passed": true
+    },
+    {
+      "id": "source-map-total",
+      "passed": true,
+      "unmapped": []
+    },
+    {
+      "findings": [],
+      "id": "generated-secret-patterns",
+      "passed": true
+    }
+  ],
+  "status": "pass"
+}

@@ -1,0 +1,62 @@
+{
+  "closedFindings": [
+    {
+      "evidence": "Immutable manifest-validated source snapshots are installed without reopening mutable generated files; the mutation-in-the-gap regression passes.",
+      "ids": "ADV-001 through ADV-016",
+      "severity": "critical/high"
+    },
+    {
+      "evidence": "Gitleaks 8.30.1 exits zero after precisely fingerprinting its benign self-referential policy-prose finding.",
+      "id": "ADV-017",
+      "severity": "medium"
+    },
+    {
+      "evidence": "Ephemeral local-verification work products were removed from the public projection; the retained evidence contains the portable verification record and content-addressed logs only.",
+      "id": "ADV-018",
+      "severity": "medium"
+    }
+  ],
+  "decisions": {
+    "factorySoftwareAlpha": "go",
+    "generatedHarnessRelease": "no-go"
+  },
+  "directRuntimeObservation": {
+    "immutableProviderRevisionAvailable": false,
+    "modelIdentityAvailable": false,
+    "reasoningEffortAvailable": false
+  },
+  "kind": "IndependentAdversarialReview",
+  "reasoningEffort": "xhigh",
+  "recordedAt": "2026-08-20T02:53:35Z",
+  "requestedDispatch": {
+    "model": "gpt-5.6-sol",
+    "reasoningEffort": "xhigh"
+  },
+  "residualRisks": [
+    "The exact-subject Codex sandbox probe read an outside-workspace canary, so the security gate and generated-harness release remain failed.",
+    "Foreign-harness reconstruction remains experimental until a fresh held-out run has zero false assertions.",
+    "Default-branch CI and installation from the actual GitHub release asset require post-publication read-back."
+  ],
+  "reviewerModel": "gpt-5.6-sol",
+  "schemaVersion": "0.1.0",
+  "sourceCommit": "65148468a0cdf4e6f192c76de3447e655a6e719c",
+  "status": "remediated",
+  "subject": {
+    "binding": {
+      "sha256": "8d5d98510faeac2ae086815af4bdaaeebaf914bcb0dd5d29b02dac85ead904a0",
+      "target": "codex"
+    },
+    "definition": {
+      "id": "urn:hdp:example:ai-sdlc",
+      "sha256": "de9a1eb1497369aede8d3e62c809b45cdef76b1ee547a3d4b8401590cb1ba8e6"
+    },
+    "harness": {
+      "sha256": "f07ab4d2cbe9966ee7d3d2821ebfe41b9ef24d2164cc8e75dad9f96944b15b63"
+    },
+    "hir": {
+      "sha256": "31ab704d5ea6d2d5a2457840fc48a0abeeda7facd5fb39bf1930ef22dcc827fd"
+    }
+  },
+  "unresolvedCritical": [],
+  "unresolvedHigh": []
+}

@@ -1,0 +1,88 @@
+{
+  "analyser": {
+    "foreignHarnessPromotionGate": "fail",
+    "managedHarnessRoundTrip": "pass",
+    "retainedBestBlindScore": 0.947037,
+    "retainedBestBlindScoreFalseAssertions": 1
+  },
+  "behaviour": {
+    "baselineConclusion": "inconclusive",
+    "requestedModel": "gpt-5.6-sol",
+    "requestedReasoningEffort": "xhigh",
+    "tasks": {
+      "defect-fix": {
+        "durationSeconds": 78.625,
+        "status": "pass"
+      },
+      "feature": {
+        "durationSeconds": 82.706,
+        "status": "pass"
+      },
+      "policy-block": {
+        "durationSeconds": 29.969,
+        "status": "pass"
+      },
+      "refactor": {
+        "durationSeconds": 85.077,
+        "status": "pass"
+      }
+    }
+  },
+  "definitionOfDone": "fail",
+  "factorySoftwareAlpha": "go",
+  "generatedHarnessReleaseEligible": false,
+  "independentReview": {
+    "closedFindings": "ADV-001 through ADV-018",
+    "status": "remediated",
+    "unresolvedCritical": [],
+    "unresolvedHigh": []
+  },
+  "kind": "FactoryVerificationReport",
+  "localVerification": {
+    "analysisSkillTests": 8,
+    "commit": "65148468a0cdf4e6f192c76de3447e655a6e719c",
+    "dirty": false,
+    "propertySubtests": 3,
+    "pytestTests": 144,
+    "softwareE2eTests": 14,
+    "status": "pass",
+    "tamperDetection": "pass"
+  },
+  "publication": {
+    "defaultBranchCi": "pending",
+    "publicReleaseAssetInstall": "pending",
+    "publicSurface": "pass",
+    "secretScan": "pass"
+  },
+  "recordedAt": "2026-08-20T02:53:35Z",
+  "sandbox": {
+    "insideWorkspaceWriteRead": "pass",
+    "networkTcpConnect": "pass",
+    "outsideWorkspaceRead": "fail",
+    "status": "fail"
+  },
+  "schemaVersion": "0.1.0",
+  "subject": {
+    "binding": {
+      "sha256": "8d5d98510faeac2ae086815af4bdaaeebaf914bcb0dd5d29b02dac85ead904a0",
+      "target": "codex"
+    },
+    "definition": {
+      "id": "urn:hdp:example:ai-sdlc",
+      "sha256": "de9a1eb1497369aede8d3e62c809b45cdef76b1ee547a3d4b8401590cb1ba8e6"
+    },
+    "harness": {
+      "sha256": "f07ab4d2cbe9966ee7d3d2821ebfe41b9ef24d2164cc8e75dad9f96944b15b63"
+    },
+    "hir": {
+      "sha256": "31ab704d5ea6d2d5a2457840fc48a0abeeda7facd5fb39bf1930ef22dcc827fd"
+    }
+  },
+  "verificationBundle": {
+    "path": "evidence/verification-bundle.json",
+    "releaseEligible": false,
+    "sha256": "562b79c6f7064cdedbea9f5061223e67f50cecf6015a0d112b56fe3c050385cd",
+    "status": "fail"
+  },
+  "version": "0.2.0a1"
+}
