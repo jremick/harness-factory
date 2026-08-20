@@ -2,13 +2,47 @@
 
 [![CI](https://github.com/jremick/harness-factory/actions/workflows/ci.yml/badge.svg)](https://github.com/jremick/harness-factory/actions/workflows/ci.yml)
 
-Harness Factory turns a declarative, target-neutral Harness Definition Package
-(HDP) into a generated, checked and installable AI coding harness. The first
-adapter targets Codex and produces `AGENTS.md`, an Agent Skill, Codex settings,
-policy/evidence scripts, source maps and a HarnessCard.
+> [!IMPORTANT]
+> **Alpha release — [`v0.2.0a1`](https://github.com/jremick/harness-factory/releases/tag/v0.2.0a1).**
+> You can try the main workflow today, but commands and file formats may change
+> before the first stable release. It is not ready to be treated as a production
+> security control.
 
-This is a public alpha. It is useful for controlled experiments and reference
-implementations, but it is not a security sandbox or a standards certification.
+Harness Factory is a tool for setting up an AI coding assistant in a consistent,
+reviewable way.
+
+You write down what the assistant should do, which tools and files it may use,
+what it must not do, and how its work should be checked. Harness Factory checks
+that description and creates the files Codex needs, such as `AGENTS.md`, an
+Agent Skill and project settings. It can then place those files into a code
+repository without silently replacing files it does not own.
+
+The shared format used to describe those rules is called a Harness Definition
+Package, or HDP. Its separate, tool-independent specification lives in the
+[`hdp-reference` repository](https://github.com/jremick/hdp-reference). This
+repository is the working tool that reads an HDP and builds a Codex setup from
+it.
+
+## Why use it?
+
+- **Write the rules once.** Generate the different files Codex needs instead of
+  copying the same instructions by hand.
+- **Make changes easier to review.** Preview every installed file and keep a
+  record of where generated content came from.
+- **Get repeatable results.** The same reviewed input produces the same files
+  and checksums.
+- **Keep unknowns visible.** When inspecting an existing setup, the analyser
+  reports what it found, what it inferred and what it could not determine.
+
+## How it works
+
+1. **Describe** the job, limits and checks in a small harness project.
+2. **Build** the Codex files and check the description for mistakes.
+3. **Review and install** the generated files into a target repository.
+4. **Verify or audit** the result before relying on it.
+
+Harness Factory prepares and checks the assistant's setup. Codex still runs the
+work, and the operating system or runtime must enforce real security boundaries.
 
 ## Five-minute start
 
@@ -76,11 +110,14 @@ boundaries must be enforced by the target runtime.
 
 ## Status and scope
 
-The Codex adapter is the only complete target adapter. The checked-in task corpus
-covers one feature, defect fix, constrained refactor and policy-block case. Live
-results are evidence for those exact subjects and runs, not a general software-
-engineering success rate. See the current [verification report](docs/verification-report.md)
-and [limitations](docs/limitations-backlog.md).
+This repository is at **Stage 2 — Public Alpha**. The Codex adapter is the only
+complete target adapter. The checked-in task corpus covers one feature, defect
+fix, constrained refactor and policy-block case. Live results are evidence for
+those exact subjects and runs, not a general software-engineering success rate.
+
+See the current [verification report](docs/verification-report.md),
+[limitations](docs/limitations-backlog.md) and
+[stable-release checkpoint plan](docs/stable-release-checkpoint.md).
 
 The provider-neutral HDP specification and versioned reference snapshot live in
 [`jremick/hdp-reference`](https://github.com/jremick/hdp-reference). This
