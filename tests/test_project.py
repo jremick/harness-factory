@@ -2,6 +2,7 @@ import os
 import json
 import tempfile
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
@@ -148,10 +149,46 @@ def test_install_refuses_symlinked_generated_source_directory() -> None:
         try:
             install_harness(paths.build, target, dry_run=False)
         except Exception as exc:
-            assert "symlink source" in str(exc)
+            assert "unsafe source" in str(exc)
         else:
             raise AssertionError("symlinked generated source was accepted")
         assert list(target.iterdir()) == []
+
+
+def test_install_uses_validated_snapshot_if_generated_source_changes() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        project = root / "project"
+        target = root / "target"
+        target.mkdir()
+        initialise_codex_sdlc(project)
+        paths = resolve_project(project)
+        compile_hdp(paths.definition, paths.binding, paths.build)
+        generated_agents = paths.build / "AGENTS.md"
+        validated_content = generated_agents.read_bytes()
+        validated_digest = project_module._sha256_bytes(validated_content)
+        original_lock = project_module._target_lock
+
+        @contextmanager
+        def mutate_after_validation(destination: Path):
+            generated_agents.write_text("unvalidated replacement\n", encoding="utf-8")
+            with original_lock(destination) as root_fd:
+                yield root_fd
+
+        with patch.object(
+            project_module, "_target_lock", side_effect=mutate_after_validation
+        ):
+            result = install_harness(paths.build, target, dry_run=False)
+
+        assert result["status"] == "installed"
+        assert (target / "AGENTS.md").read_bytes() == validated_content
+        install_manifest = json.loads(
+            (target / project_module.INSTALL_MANIFEST).read_text(encoding="utf-8")
+        )
+        installed_agents = next(
+            item for item in install_manifest["files"] if item["path"] == "AGENTS.md"
+        )
+        assert installed_agents["sha256"] == validated_digest
 
 
 def test_install_fails_closed_on_stale_managed_file() -> None:

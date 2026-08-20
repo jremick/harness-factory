@@ -82,31 +82,6 @@ def _safe_destination(root: Path, relative: Path) -> Path:
     return root / relative
 
 
-def _safe_source(root: Path, relative: Path) -> Path:
-    current = root
-    for part in relative.parts:
-        current = current / part
-        if current.is_symlink():
-            raise HdpInputError(
-                f"generated harness refuses symlink source: {relative.as_posix()}"
-            )
-    try:
-        resolved = current.resolve(strict=True)
-    except FileNotFoundError as exc:
-        raise HdpInputError(
-            f"generated artifact is missing: {relative.as_posix()}"
-        ) from exc
-    if resolved != root and root not in resolved.parents:
-        raise HdpInputError(
-            f"generated artifact escapes harness root: {relative.as_posix()}"
-        )
-    if not stat.S_ISREG(resolved.lstat().st_mode):
-        raise HdpInputError(
-            f"generated artifact is not a regular file: {relative.as_posix()}"
-        )
-    return resolved
-
-
 def _open_parent_fd(root_fd: int, relative: Path, *, create: bool) -> tuple[int, str]:
     current_fd = os.dup(root_fd)
     try:
@@ -465,7 +440,17 @@ def initialise_codex_sdlc(directory: Path) -> dict[str, Any]:
     }
 
 
-def _managed_sources(harness: Path) -> tuple[dict[str, Any], list[tuple[Path, Path]]]:
+@dataclass(frozen=True)
+class ManagedSource:
+    """An immutable, manifest-validated generated artifact snapshot."""
+
+    relative: Path
+    content: bytes
+    mode: int
+    sha256: str
+
+
+def _managed_sources(harness: Path) -> tuple[dict[str, Any], list[ManagedSource]]:
     harness = _safe_root(harness, label="generated harness")
     manifest_relative = Path(".hdp/manifest.json")
     root_fd = os.open(harness, _DIRECTORY_FLAGS)
@@ -473,42 +458,73 @@ def _managed_sources(harness: Path) -> tuple[dict[str, Any], list[tuple[Path, Pa
         manifest_snapshot = _snapshot_at(
             root_fd, manifest_relative, maximum=1_048_576
         )
+        if manifest_snapshot is None:
+            raise HdpInputError("generated harness manifest is missing")
+        manifest = load_document_bytes(
+            manifest_snapshot["content"],
+            suffix=".json",
+            label="generated harness manifest",
+        )
+        artifacts = manifest.get("artifacts")
+        if not isinstance(artifacts, list):
+            raise HdpInputError("generated harness manifest has no artifact array")
+        sources: list[ManagedSource] = []
+        seen: set[str] = set()
+        for item in artifacts:
+            if not isinstance(item, dict) or not isinstance(item.get("path"), str):
+                raise HdpInputError(
+                    "generated harness manifest contains an invalid artifact"
+                )
+            relative = _safe_relative(item["path"])
+            key = relative.as_posix()
+            if relative == manifest_relative:
+                raise HdpInputError(
+                    "generated artifact manifest cannot list its own manifest file"
+                )
+            if key in seen:
+                raise HdpInputError(f"duplicate generated artifact path: {key}")
+            seen.add(key)
+            declared_digest = item.get("sha256")
+            if (
+                not isinstance(declared_digest, str)
+                or len(declared_digest) != 64
+                or any(
+                    character not in "0123456789abcdef"
+                    for character in declared_digest
+                )
+            ):
+                raise HdpInputError(
+                    f"generated artifact has an invalid digest: {key}"
+                )
+            try:
+                snapshot = _snapshot_at(root_fd, relative)
+            except HdpInputError as exc:
+                raise HdpInputError(
+                    f"generated harness refuses unsafe source: {key}"
+                ) from exc
+            if snapshot is None:
+                raise HdpInputError(f"generated artifact is missing: {key}")
+            if snapshot["sha256"] != declared_digest:
+                raise HdpInputError(f"generated artifact digest mismatch: {key}")
+            sources.append(
+                ManagedSource(
+                    relative=relative,
+                    content=snapshot["content"],
+                    mode=snapshot["mode"],
+                    sha256=declared_digest,
+                )
+            )
+        sources.append(
+            ManagedSource(
+                relative=manifest_relative,
+                content=manifest_snapshot["content"],
+                mode=manifest_snapshot["mode"],
+                sha256=manifest_snapshot["sha256"],
+            )
+        )
+        return manifest, sources
     finally:
         os.close(root_fd)
-    if manifest_snapshot is None:
-        raise HdpInputError("generated harness manifest is missing")
-    manifest = load_document_bytes(
-        manifest_snapshot["content"],
-        suffix=".json",
-        label="generated harness manifest",
-    )
-    artifacts = manifest.get("artifacts")
-    if not isinstance(artifacts, list):
-        raise HdpInputError("generated harness manifest has no artifact array")
-    relative_paths: list[Path] = []
-    seen: set[str] = set()
-    for item in artifacts:
-        if not isinstance(item, dict) or not isinstance(item.get("path"), str):
-            raise HdpInputError("generated harness manifest contains an invalid artifact")
-        relative = _safe_relative(item["path"])
-        key = relative.as_posix()
-        if relative == manifest_relative:
-            raise HdpInputError(
-                "generated artifact manifest cannot list its own manifest file"
-            )
-        if key in seen:
-            raise HdpInputError(f"duplicate generated artifact path: {key}")
-        seen.add(key)
-        source = _safe_source(harness, relative)
-        if not source.is_file():
-            raise HdpInputError(f"generated artifact is not a regular file: {key}")
-        if _sha256_path(source) != item.get("sha256"):
-            raise HdpInputError(f"generated artifact digest mismatch: {key}")
-        relative_paths.append(relative)
-    relative_paths.append(manifest_relative)
-    return manifest, [
-        (relative, _safe_source(harness, relative)) for relative in relative_paths
-    ]
 
 
 def install_harness(harness: Path, target: Path, *, dry_run: bool) -> dict[str, Any]:
@@ -563,10 +579,11 @@ def install_harness(harness: Path, target: Path, *, dry_run: bool) -> dict[str, 
         actions: list[dict[str, str]] = []
         conflicts: list[dict[str, str]] = []
         installed: list[dict[str, str]] = []
-        for relative, source in sources:
+        for source in sources:
+            relative = source.relative
             key = relative.as_posix()
             destination = _safe_destination(target, relative)
-            source_digest = _sha256_path(source)
+            source_digest = source.sha256
             installed.append({"path": key, "sha256": source_digest})
             if not destination.exists():
                 action = "create"
@@ -588,7 +605,7 @@ def install_harness(harness: Path, target: Path, *, dry_run: bool) -> dict[str, 
                 action = "unchanged" if current_digest == source_digest else "update"
             actions.append({"path": key, "action": action})
 
-        current_paths = {relative.as_posix() for relative, _ in sources}
+        current_paths = {source.relative.as_posix() for source in sources}
         for stale_path, stale_digest in sorted(previous_files.items()):
             if stale_path in current_paths:
                 continue
@@ -615,7 +632,7 @@ def install_harness(harness: Path, target: Path, *, dry_run: bool) -> dict[str, 
             return result
         assert root_fd is not None
 
-        source_by_path = {relative.as_posix(): source for relative, source in sources}
+        source_by_path = {source.relative.as_posix(): source for source in sources}
         digest_by_path = {item["path"]: item["sha256"] for item in installed}
         writes: list[dict[str, Any]] = []
         journal_entries: list[dict[str, Any]] = []
@@ -629,7 +646,7 @@ def install_harness(harness: Path, target: Path, *, dry_run: bool) -> dict[str, 
                     f"destination changed during installation: {action['path']}"
                 )
             source = source_by_path[action["path"]]
-            content = source.read_bytes()
+            content = source.content
             if _sha256_bytes(content) != digest_by_path[action["path"]]:
                 raise HdpInputError(
                     f"generated artifact changed during installation: {action['path']}"
@@ -638,7 +655,7 @@ def install_harness(harness: Path, target: Path, *, dry_run: bool) -> dict[str, 
                 writes.append({
                     "path": relative,
                     "content": content,
-                    "mode": stat.S_IMODE(source.stat().st_mode),
+                    "mode": source.mode,
                     "allowed": {expected_current},
                 })
                 journal_entries.append(

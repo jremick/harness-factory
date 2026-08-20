@@ -27,7 +27,7 @@ harness. See [ADR 0014](decisions/0014-separate-factory-alpha-from-harness-relea
 
 | Gate | Result | Evidence |
 | --- | --- | --- |
-| Pytest schema, semantic, HIR, installer, packaging and regression suite | pass | 143 tests plus 3 subtests |
+| Pytest schema, semantic, HIR, installer, packaging and regression suite | pass | 144 tests plus 3 subtests |
 | Legacy software-E2E generator suite | pass after manifest repair | 14 unittest cases |
 | Deterministic compile, static, analyse, exact diff, ineligible package, verify and tamper path | pass | `evidence/local-verification-current/verification.json` |
 | Built-wheel consumer path | pass | `scripts/smoke-consumer.sh` |
