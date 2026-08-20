@@ -1,6 +1,7 @@
 import os
 import json
 import tempfile
+import time
 from pathlib import Path
 from unittest.mock import patch
 
@@ -248,6 +249,47 @@ def test_install_never_replays_unexplained_preexisting_journal() -> None:
             install_harness(paths.build, target, dry_run=False)
         assert not (target / ".git/hooks/pre-commit").exists()
         assert journal.is_file()
+
+
+def test_install_refuses_oversized_preexisting_journal_without_reading_it() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        project = root / "project"
+        target = root / "target"
+        target.mkdir()
+        initialise_codex_sdlc(project)
+        paths = resolve_project(project)
+        compile_hdp(paths.definition, paths.binding, paths.build)
+        journal = target / ".harness-factory/install-transaction.json"
+        journal.parent.mkdir()
+        with journal.open("wb") as handle:
+            handle.seek(64 * 1024 * 1024)
+            handle.write(b"\0")
+
+        started = time.monotonic()
+        with pytest.raises(HdpInputError, match="unfinished installation journal"):
+            install_harness(paths.build, target, dry_run=False)
+        assert time.monotonic() - started < 2
+        assert journal.stat().st_size > 64 * 1024 * 1024
+
+
+def test_install_refuses_required_manifest_fifo_without_blocking() -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        project = root / "project"
+        target = root / "target"
+        target.mkdir()
+        initialise_codex_sdlc(project)
+        paths = resolve_project(project)
+        compile_hdp(paths.definition, paths.binding, paths.build)
+        manifest = paths.build / ".hdp/manifest.json"
+        manifest.unlink()
+        os.mkfifo(manifest)
+
+        started = time.monotonic()
+        with pytest.raises(HdpInputError, match="non-regular"):
+            install_harness(paths.build, target, dry_run=False)
+        assert time.monotonic() - started < 2
 
 
 def test_install_refuses_concurrent_installer() -> None:

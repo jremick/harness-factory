@@ -82,6 +82,8 @@ pre-existing file is still unowned and is not adopted implicitly.
 
 Release packaging and verification accept only bounded regular files. Symlinks,
 FIFOs, sockets and devices are rejected before any JSON or payload read.
+Required controls are opened nonblocking and no-follow beneath an opened root
+directory descriptor, so a symlinked parent cannot redirect their reads.
 
 ## Round-trip acceptance
 

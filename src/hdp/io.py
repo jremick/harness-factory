@@ -131,6 +131,39 @@ def _check_document_limits(value: Any) -> None:
             )
 
 
+def load_document_bytes(
+    raw_bytes: bytes, *, suffix: str, label: str
+) -> Dict[str, Any]:
+    """Parse a bounded JSON/YAML mapping already read through a trusted boundary."""
+
+    if len(raw_bytes) > _MAX_DOCUMENT_BYTES:
+        raise HdpInputError(
+            f"cannot read {label}: document exceeds {_MAX_DOCUMENT_BYTES} bytes"
+        )
+    try:
+        raw = raw_bytes.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise HdpInputError(f"cannot read {label}: document is not valid UTF-8") from exc
+
+    try:
+        if suffix.lower() == ".json":
+            value = json.loads(raw, object_pairs_hook=_unique_json_object)
+        elif suffix.lower() in {".yaml", ".yml"}:
+            _reject_yaml_references(raw)
+            value = yaml.load(raw, Loader=_UniqueKeyLoader)
+        else:
+            raise HdpInputError(
+                f"unsupported document extension for {label}; expected .json, .yaml, or .yml"
+            )
+    except (json.JSONDecodeError, yaml.YAMLError, _DuplicateKeyError, RecursionError) as exc:
+        raise HdpInputError(f"cannot parse {label}: {exc}") from exc
+
+    if not isinstance(value, dict):
+        raise HdpInputError(f"{label} must contain one top-level mapping/object")
+    _check_document_limits(value)
+    return value
+
+
 def load_document(path: Path) -> Dict[str, Any]:
     """Load a JSON or YAML mapping without constructing arbitrary objects."""
 
@@ -139,32 +172,7 @@ def load_document(path: Path) -> Dict[str, Any]:
             raw_bytes = stream.read(_MAX_DOCUMENT_BYTES + 1)
     except OSError as exc:
         raise HdpInputError(f"cannot read {path}: {exc}") from exc
-    if len(raw_bytes) > _MAX_DOCUMENT_BYTES:
-        raise HdpInputError(
-            f"cannot read {path}: document exceeds {_MAX_DOCUMENT_BYTES} bytes"
-        )
-    try:
-        raw = raw_bytes.decode("utf-8")
-    except UnicodeDecodeError as exc:
-        raise HdpInputError(f"cannot read {path}: document is not valid UTF-8") from exc
-
-    try:
-        if path.suffix.lower() == ".json":
-            value = json.loads(raw, object_pairs_hook=_unique_json_object)
-        elif path.suffix.lower() in {".yaml", ".yml"}:
-            _reject_yaml_references(raw)
-            value = yaml.load(raw, Loader=_UniqueKeyLoader)
-        else:
-            raise HdpInputError(
-                f"unsupported document extension for {path}; expected .json, .yaml, or .yml"
-            )
-    except (json.JSONDecodeError, yaml.YAMLError, _DuplicateKeyError, RecursionError) as exc:
-        raise HdpInputError(f"cannot parse {path}: {exc}") from exc
-
-    if not isinstance(value, dict):
-        raise HdpInputError(f"{path} must contain one top-level mapping/object")
-    _check_document_limits(value)
-    return value
+    return load_document_bytes(raw_bytes, suffix=path.suffix, label=str(path))
 
 
 def canonical_json(value: Any) -> str:

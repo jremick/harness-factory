@@ -19,7 +19,7 @@ from typing import Any
 import yaml
 
 from .diagnostics import HdpInputError
-from .io import atomic_write_text, dump_json, dump_yaml, load_document
+from .io import atomic_write_text, dump_json, dump_yaml, load_document, load_document_bytes
 
 
 INSTALL_MANIFEST = Path(".harness-factory/install-manifest.json")
@@ -35,7 +35,19 @@ def _sha256_bytes(value: bytes) -> str:
 
 
 def _sha256_path(path: Path) -> str:
-    return _sha256_bytes(path.read_bytes())
+    descriptor = os.open(
+        path,
+        os.O_RDONLY | _FILE_NOFOLLOW | getattr(os, "O_NONBLOCK", 0),
+    )
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode):
+            raise HdpInputError(f"expected a regular file: {path}")
+        digest = hashlib.sha256()
+        while chunk := os.read(descriptor, 1024 * 1024):
+            digest.update(chunk)
+        return digest.hexdigest()
+    finally:
+        os.close(descriptor)
 
 
 def _safe_root(path: Path, *, label: str, must_exist: bool = True) -> Path:
@@ -88,6 +100,10 @@ def _safe_source(root: Path, relative: Path) -> Path:
         raise HdpInputError(
             f"generated artifact escapes harness root: {relative.as_posix()}"
         )
+    if not stat.S_ISREG(resolved.lstat().st_mode):
+        raise HdpInputError(
+            f"generated artifact is not a regular file: {relative.as_posix()}"
+        )
     return resolved
 
 
@@ -114,7 +130,26 @@ def _open_parent_fd(root_fd: int, relative: Path, *, create: bool) -> tuple[int,
         raise
 
 
-def _snapshot_at(root_fd: int, relative: Path) -> dict[str, Any] | None:
+def _entry_at(root_fd: int, relative: Path) -> os.stat_result | None:
+    try:
+        parent_fd, name = _open_parent_fd(root_fd, relative, create=False)
+    except FileNotFoundError:
+        return None
+    try:
+        try:
+            return os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        except FileNotFoundError:
+            return None
+    finally:
+        os.close(parent_fd)
+
+
+def _snapshot_at(
+    root_fd: int,
+    relative: Path,
+    *,
+    maximum: int = _MAX_TRANSACTION_FILE_BYTES,
+) -> dict[str, Any] | None:
     try:
         parent_fd, name = _open_parent_fd(root_fd, relative, create=False)
     except FileNotFoundError:
@@ -128,14 +163,28 @@ def _snapshot_at(root_fd: int, relative: Path) -> dict[str, Any] | None:
             raise HdpInputError(
                 f"managed installation refuses non-regular destination: {relative.as_posix()}"
             )
-        descriptor = os.open(name, os.O_RDONLY | _FILE_NOFOLLOW, dir_fd=parent_fd)
+        if metadata.st_size > maximum:
+            raise HdpInputError(
+                f"managed installation file exceeds {maximum} bytes: {relative.as_posix()}"
+            )
+        descriptor = os.open(
+            name,
+            os.O_RDONLY | _FILE_NOFOLLOW | getattr(os, "O_NONBLOCK", 0),
+            dir_fd=parent_fd,
+        )
         try:
             chunks: list[bytes] = []
-            while chunk := os.read(descriptor, 1024 * 1024):
+            remaining = maximum + 1
+            while remaining and (chunk := os.read(descriptor, min(1024 * 1024, remaining))):
                 chunks.append(chunk)
+                remaining -= len(chunk)
         finally:
             os.close(descriptor)
         content = b"".join(chunks)
+        if len(content) > maximum or len(content) != metadata.st_size:
+            raise HdpInputError(
+                f"managed installation file changed while read: {relative.as_posix()}"
+            )
         return {
             "content": content,
             "mode": stat.S_IMODE(metadata.st_mode),
@@ -419,8 +468,20 @@ def initialise_codex_sdlc(directory: Path) -> dict[str, Any]:
 def _managed_sources(harness: Path) -> tuple[dict[str, Any], list[tuple[Path, Path]]]:
     harness = _safe_root(harness, label="generated harness")
     manifest_relative = Path(".hdp/manifest.json")
-    manifest_path = _safe_source(harness, manifest_relative)
-    manifest = load_document(manifest_path)
+    root_fd = os.open(harness, _DIRECTORY_FLAGS)
+    try:
+        manifest_snapshot = _snapshot_at(
+            root_fd, manifest_relative, maximum=1_048_576
+        )
+    finally:
+        os.close(root_fd)
+    if manifest_snapshot is None:
+        raise HdpInputError("generated harness manifest is missing")
+    manifest = load_document_bytes(
+        manifest_snapshot["content"],
+        suffix=".json",
+        label="generated harness manifest",
+    )
     artifacts = manifest.get("artifacts")
     if not isinstance(artifacts, list):
         raise HdpInputError("generated harness manifest has no artifact array")
@@ -469,7 +530,7 @@ def install_harness(harness: Path, target: Path, *, dry_run: bool) -> dict[str, 
         }
     lock_context = nullcontext(None) if dry_run else _target_lock(target)
     with lock_context as root_fd:
-        if root_fd is not None and _snapshot_at(root_fd, INSTALL_TRANSACTION) is not None:
+        if root_fd is not None and _entry_at(root_fd, INSTALL_TRANSACTION) is not None:
             raise HdpInputError(
                 "an unfinished installation journal exists; inspect the target and "
                 "remove it only after explicit manual recovery"
@@ -605,11 +666,17 @@ def install_harness(harness: Path, target: Path, *, dry_run: bool) -> dict[str, 
         journal_entries.append(
             _journal_entry(INSTALL_MANIFEST.as_posix(), manifest_snapshot, manifest_digest)
         )
+        if len(journal_entries) > 1024:
+            raise HdpInputError("installation transaction exceeds 1024 managed writes")
         journal = dump_json({
             "schemaVersion": "1",
             "kind": "HarnessInstallTransaction",
             "entries": journal_entries,
         }).encode("utf-8")
+        if len(journal) > _MAX_TRANSACTION_FILE_BYTES:
+            raise HdpInputError(
+                "installation transaction journal exceeds the 4 MiB safety limit"
+            )
         _atomic_write_at(
             root_fd,
             INSTALL_TRANSACTION,

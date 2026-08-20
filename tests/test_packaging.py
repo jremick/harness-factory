@@ -1,7 +1,9 @@
 import copy
 import json
 import os
+import shutil
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -106,6 +108,32 @@ class PackagingTests(unittest.TestCase):
             result = verify_release(release)
             self.assertFalse(result["verified"])
             self.assertIn("non-regular release entry", result["errors"][0])
+
+    def test_packager_rejects_required_manifest_fifo_without_blocking(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            harness = root / "harness"
+            compile_hdp(DEFINITION, BINDING, harness)
+            manifest = harness / ".hdp/manifest.json"
+            manifest.unlink()
+            os.mkfifo(manifest)
+
+            started = time.monotonic()
+            with self.assertRaisesRegex(HdpGenerationError, "non-regular"):
+                package_release(harness, DEFINITION, BINDING, root / "release")
+            self.assertLess(time.monotonic() - started, 2)
+
+    def test_packager_rejects_symlinked_required_parent_before_read(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            harness = root / "harness"
+            compile_hdp(DEFINITION, BINDING, harness)
+            outside = root / "outside-hdp"
+            shutil.move(harness / ".hdp", outside)
+            os.symlink(outside, harness / ".hdp")
+
+            with self.assertRaisesRegex(HdpGenerationError, "symlink"):
+                package_release(harness, DEFINITION, BINDING, root / "release")
 
 
 if __name__ == "__main__":

@@ -20,7 +20,8 @@ This project follows semantic versioning while it is in public alpha.
 - Close release packaging to the exact manifest-owned harness tree and bind raw
   conformance artifacts to the complete definition/HIR/binding/harness subject.
 - Reject hostile pre-existing recovery journals and all symlink/non-regular or
-  oversized release inputs before bounded no-follow reads.
+  oversized release inputs before bounded, nonblocking, root-anchored no-follow
+  reads.
 - Scope foreign-harness reconstruction as experimental until a new held-out
   zero-false-assertion gate passes.
 - Add Apache-2.0 licensing, public support/security guidance and CI.
