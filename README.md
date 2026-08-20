@@ -8,41 +8,51 @@
 > before the first stable release. It is not ready to be treated as a production
 > security control.
 
-Harness Factory is a tool for setting up an AI coding assistant in a consistent,
-reviewable way.
+Harness Factory is a general-purpose builder for agentic harnesses. A harness is
+the set of instructions, tools, limits, workflows and checks that shape how an
+AI agent works.
 
-You write down what the assistant should do, which tools and files it may use,
-what it must not do, and how its work should be checked. Harness Factory checks
-that description and creates the files Codex needs, such as `AGENTS.md`, an
-Agent Skill and project settings. It can then place those files into a code
-repository without silently replacing files it does not own.
+You describe the harness you want in a Harness Definition Package, or HDP. Think
+of the HDP as both a blueprint and a test plan: it says what the harness is meant
+to achieve, what it needs, how it should operate and how the result should be
+checked. The tool-independent HDP specification lives in the
+[`hdp-reference` repository](https://github.com/jremick/hdp-reference).
 
-The shared format used to describe those rules is called a Harness Definition
-Package, or HDP. Its separate, tool-independent specification lives in the
-[`hdp-reference` repository](https://github.com/jremick/hdp-reference). This
-repository is the working tool that reads an HDP and builds a Codex setup from
-it.
+Harness Factory checks the HDP, works out what must be built, creates the files
+for a supported agent environment and verifies the result against the defined
+checks. It also records where each generated part came from, making the harness
+easier to review, test, compare, package, share and improve over time.
+
+Codex is the first complete target supported by this prototype. The factory can
+currently create Codex files such as `AGENTS.md`, an Agent Skill and project
+settings, but the HDP itself is not tied to Codex.
 
 ## Why use it?
 
-- **Write the rules once.** Generate the different files Codex needs instead of
-  copying the same instructions by hand.
-- **Make changes easier to review.** Preview every installed file and keep a
-  record of where generated content came from.
-- **Get repeatable results.** The same reviewed input produces the same files
-  and checksums.
-- **Keep unknowns visible.** When inspecting an existing setup, the analyser
-  reports what it found, what it inferred and what it could not determine.
+- **Build from one source.** Keep the purpose, parts, rules and checks together
+  in an HDP instead of maintaining disconnected files by hand.
+- **Check what was built.** Test the resulting harness against the requirements
+  and checks defined for it, while keeping unsupported claims visible.
+- **Improve it with discipline.** Review and compare explicit changes, rebuild
+  repeatably and keep a record of where generated content came from.
+- **Reuse and share it.** Package a harness definition so another person or
+  supported agent environment can build the same reviewed design.
+- **Learn from existing harnesses.** The analyser reports what it found, what it
+  inferred and what it could not determine instead of silently guessing.
 
 ## How it works
 
-1. **Describe** the job, limits and checks in a small harness project.
-2. **Build** the Codex files and check the description for mistakes.
-3. **Review and install** the generated files into a target repository.
-4. **Verify or audit** the result before relying on it.
+1. **Describe** the intended harness, its parts, its limits and its checks in an
+   HDP.
+2. **Validate and plan** the build, rejecting missing or contradictory
+   requirements.
+3. **Build** the harness for a supported target, currently Codex.
+4. **Verify and package** the result with tests, source records and checksums.
+5. **Evolve or share** the HDP, then rebuild and compare the next version.
 
-Harness Factory prepares and checks the assistant's setup. Codex still runs the
-work, and the operating system or runtime must enforce real security boundaries.
+Harness Factory verifies the result against defined, measurable checks. That
+does not guarantee every action taken by an AI agent will be correct, and the
+operating system or runtime must still enforce real security boundaries.
 
 ## Five-minute start
 
