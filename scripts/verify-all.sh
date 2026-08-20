@@ -11,6 +11,7 @@ reconstruction="$run_dir/reconstruction"
 cd "$repo_dir"
 
 uv sync --frozen --python 3.12
+uv run python tools/check_public_surface.py
 uv run hdp validate examples/minimal/hdp.yaml --json
 uv run hdp validate examples/software-development/hdp.yaml --json
 uv run pytest -q
@@ -23,4 +24,5 @@ uv run python skills/analyse-existing-harness/scripts/validate_reconstruction.py
   "$reconstruction/hdp.reconstructed.yaml"
 uv build --wheel --sdist --out-dir "$run_dir/dist"
 
-printf '%s\n' "VERIFIED deterministic gates; retained temporary evidence at $run_dir"
+printf '%s\n' \
+  "VERIFIED deterministic gates, including valid generated-harness round-trip reconstruction; retained temporary evidence at $run_dir"

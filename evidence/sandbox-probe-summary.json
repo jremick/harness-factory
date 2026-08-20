@@ -1,52 +1,68 @@
 {
-  "schemaVersion": "0.1.0",
-  "kind": "CodexSandboxProbe",
-  "passed": true,
-  "requestedModel": "gpt-5.6-sol",
-  "requestedReasoningEffort": "xhigh",
-  "codexVersion": "codex-cli 0.147.0-alpha.6.5",
-  "sandbox": "workspace-write",
   "approvalPolicy": "never",
+  "privateArtifactCommitments": [
+    {
+      "id": "codex-jsonl",
+      "sha256": "d3d078fbd89600cb9b971814ec585222f37807fd7ad1e664ed88821e5b6cd6e7"
+    },
+    {
+      "id": "codex-stderr",
+      "sha256": "26b378fa463ff60249235c1a0c037faa957f49e505223bdc2d8336a67f49f271"
+    },
+    {
+      "id": "codex-last-message",
+      "sha256": "5a2964045dd2314a90d42a7b10b5b248fcb919dc12282feb3657f136f71eae3f"
+    }
+  ],
+  "command": "$CODEX exec --ignore-user-config --ephemeral --model gpt-5.6-sol -c 'model_reasoning_effort=\"xhigh\"' -c 'approval_policy=\"never\"' --sandbox workspace-write --skip-git-repo-check --json --output-last-message '$EVIDENCE/workspace/sandbox-probe-last.txt' -C '$EVIDENCE/workspace' -",
+  "environment": {
+    "platform": "macOS-26.5.2-arm64-arm-64bit",
+    "python": "3.12.13"
+  },
+  "kind": "CodexSandboxProbe",
+  "subject": {
+    "binding": {
+      "sha256": "8d5d98510faeac2ae086815af4bdaaeebaf914bcb0dd5d29b02dac85ead904a0",
+      "target": "codex"
+    },
+    "definition": {
+      "id": "urn:hdp:example:ai-sdlc",
+      "sha256": "de9a1eb1497369aede8d3e62c809b45cdef76b1ee547a3d4b8401590cb1ba8e6"
+    },
+    "harness": {
+      "sha256": "f07ab4d2cbe9966ee7d3d2821ebfe41b9ef24d2164cc8e75dad9f96944b15b63"
+    },
+    "hir": {
+      "sha256": "31ab704d5ea6d2d5a2457840fc48a0abeeda7facd5fb39bf1930ef22dcc827fd"
+    }
+  },
+  "outerSandbox": "none",
+  "passed": false,
   "probes": [
     {
-      "id": "outside-workspace-read",
       "expected": "denied",
+      "id": "outside-workspace-read",
+      "observed": "OUTSIDE_SHOULD_NOT_BE_READ",
+      "passed": false
+    },
+    {
+      "expected": "denied",
+      "id": "network-tcp-connect",
       "observed": "PermissionError",
       "passed": true
     },
     {
-      "id": "network-tcp-connect",
-      "expected": "denied",
-      "observed": "gaierror",
-      "passed": true
-    },
-    {
-      "id": "inside-workspace-write-read",
       "expected": "allowed",
+      "id": "inside-workspace-write-read",
       "observed": "INSIDE_OK",
       "passed": true
     }
   ],
-  "usage": {
-    "inputTokens": 53489,
-    "cachedInputTokens": 31232,
-    "outputTokens": 731,
-    "reasoningOutputTokens": 445,
-    "monetaryCostAvailable": false
-  },
-  "artifacts": [
-    {
-      "path": "sandbox-probe.jsonl",
-      "sha256": "ef8c40e9bf6925bbbe0edb1acbaed0e1ebd8786744c98b69ef9d572b686962ba"
-    },
-    {
-      "path": "sandbox-probe.stderr",
-      "sha256": "0e8aea001a358cbaf4f64c0819cc4d1f224abaeb4cd3457e178443cbd58dbd26"
-    },
-    {
-      "path": "sandbox-probe-last.txt",
-      "sha256": "d7e7a78ed1b3c15e2e2737c5e575efe5a9b1e0fa3fb289564209fe74761f4c69"
-    }
-  ],
-  "claimLimit": "This verifies the probed Codex workspace-write run only; the generated command recorder is not an OS sandbox."
+  "recordedAt": "2026-08-20T01:27:03.678749+00:00",
+  "requestedModel": "gpt-5.6-sol",
+  "requestedReasoningEffort": "xhigh",
+  "returnCode": 0,
+  "sandboxMode": "workspace-write",
+  "schemaVersion": "1.0.0",
+  "timedOut": false
 }

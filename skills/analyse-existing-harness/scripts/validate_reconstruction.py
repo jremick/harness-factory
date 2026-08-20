@@ -445,6 +445,64 @@ def accepted_public_projection_unknowns(
     return accepted
 
 
+def accepted_incomplete_reconstruction_unknowns(
+    definition: dict[str, Any],
+    reconstruction: dict[str, Any],
+    required_absent_paths: set[str],
+) -> set[str]:
+    """Accept evidence records for fields intentionally absent from a draft.
+
+    These paths satisfy assessment completeness only. They do not suppress JSON
+    Schema errors or make the core HDP generation-ready.
+    """
+
+    if (
+        reconstruction.get("generationReady") is not False
+        or reconstruction.get("sourceMode") != "skill-assisted-reconstruction"
+    ):
+        return set()
+    accepted: set[str] = set()
+    for item in reconstruction.get("fieldAssessments", []):
+        if not isinstance(item, dict):
+            continue
+        path = item.get("path")
+        try:
+            resolve_pointer(definition, path)
+        except (ValueError, KeyError, IndexError):
+            pass
+        else:
+            continue
+        if (
+            isinstance(path, str)
+            and path in required_absent_paths
+            and item.get("value") is None
+            and item.get("claimClass") == "absent-or-unknowable"
+            and item.get("epistemicStatus") == "unknown"
+            and item.get("confidence") == 0
+            and isinstance(item.get("missingEvidence"), list)
+            and bool(item["missingEvidence"])
+            and item.get("humanConfirmationRequired") is True
+        ):
+            accepted.add(path)
+    return accepted
+
+
+def required_absent_paths(errors: list[Any]) -> set[str]:
+    """Return only instance pointers proven absent by JSON Schema required errors."""
+
+    paths: set[str] = set()
+    for error in errors:
+        if error.validator != "required" or not isinstance(error.instance, dict):
+            continue
+        base = "".join(f"/{_escape(item)}" for item in error.absolute_path)
+        if not isinstance(error.validator_value, list):
+            continue
+        for item in error.validator_value:
+            if isinstance(item, str) and item not in error.instance:
+                paths.add(f"{base}/{_escape(item)}")
+    return paths
+
+
 def required_error_is_accepted(error: Any, accepted_absent_paths: set[str]) -> bool:
     """Suppress only required-property errors covered by accepted redaction records."""
 
@@ -544,19 +602,22 @@ def main() -> int:
         # output uses the adjacent evidence map above.
         reconstruction = embedded_reconstruction
 
-    accepted_absent_paths = accepted_public_projection_unknowns(
+    schema_accepted_paths = accepted_public_projection_unknowns(
         definition, reconstruction
+    )
+    assessment_accepted_paths = schema_accepted_paths | accepted_incomplete_reconstruction_unknowns(
+        definition, reconstruction, required_absent_paths(errors)
     )
     remaining_errors = [
         item for item in errors
-        if not required_error_is_accepted(item, accepted_absent_paths)
+        if not required_error_is_accepted(item, schema_accepted_paths)
     ]
     messages.extend(
         f"structure /{'/'.join(map(str, item.path))}: {item.message}"
         for item in remaining_errors
     )
     assessment_messages, assessments, expected_count = validate_assessments(
-        definition, reconstruction, accepted_absent_paths=accepted_absent_paths
+        definition, reconstruction, accepted_absent_paths=assessment_accepted_paths
     )
     messages.extend(assessment_messages)
     if not remaining_errors:

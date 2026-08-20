@@ -40,6 +40,7 @@ def main() -> int:
     if not isinstance(definition, dict) or not isinstance(overrides, dict):
         parser.error("HDP and override inputs must be mappings")
     records = []
+    recorded_paths = set()
     for path, value in leaves(definition):
         override = overrides.get(path, {})
         status = override.get("epistemicStatus", "unknown")
@@ -55,6 +56,37 @@ def main() -> int:
                 "humanConfirmation": {
                     "required": override.get("humanConfirmationRequired", status in {"inferred", "unknown"}),
                     "reason": override.get("humanConfirmationReason", "Required normative value lacks sufficient source evidence." if status == "unknown" else ""),
+                },
+            }
+        )
+        recorded_paths.add(path)
+    for path in sorted(
+        item for item in overrides
+        if isinstance(item, str) and item.startswith("/") and item not in recorded_paths
+    ):
+        override = overrides[path]
+        if not isinstance(override, dict) or override.get("epistemicStatus") != "unknown":
+            raise ValueError(
+                f"absent override {path!r} must be an unknown assessment mapping"
+            )
+        records.append(
+            {
+                "field": path,
+                "value": None,
+                "claimClass": override.get("claimClass", "absent-or-unknowable"),
+                "epistemicStatus": "unknown",
+                "confidence": 0.0,
+                "sources": override.get("sources", override.get("evidence", [])),
+                "contradictions": override.get("contradictions", []),
+                "missingEvidence": override.get(
+                    "missingEvidence", ["Required source evidence is absent."]
+                ),
+                "humanConfirmation": {
+                    "required": True,
+                    "reason": override.get(
+                        "humanConfirmationReason",
+                        "A required normative value is absent from the source.",
+                    ),
                 },
             }
         )

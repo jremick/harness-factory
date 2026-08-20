@@ -32,8 +32,6 @@ from .verification_evidence import validate_verification_bundle
 
 
 _IGNORED_TREE_PARTS = frozenset({"__pycache__", ".pytest_cache", ".git"})
-_CONTROL_ROOTS = frozenset({"AGENTS.md", "HarnessCard.md", "STATE.md"})
-_CONTROL_PREFIXES = (".agents/", ".codex/", ".hdp/", "roles/", "scripts/")
 _STATEMENT_TYPE = "https://in-toto.io/Statement/v1"
 _BUILD_PREDICATE_TYPE = "https://harnessfactory.dev/attestation/build/v0.1"
 _CONFORMANCE_PREDICATE_TYPE = "https://harnessfactory.dev/attestation/conformance/v0.1"
@@ -105,10 +103,6 @@ def _safe_relative(value: Any) -> str | None:
     return value
 
 
-def _is_control_path(relative: str) -> bool:
-    return relative in _CONTROL_ROOTS or relative.startswith(_CONTROL_PREFIXES)
-
-
 def _validate_generated_harness(
     harness: Path, hir: HIR, binding: CodexBinding
 ) -> None:
@@ -143,7 +137,7 @@ def _validate_generated_harness(
     expected_files, expected_source_map = adapter._expected_files(hir, compile_plan)
     expected_manifest = {
         "manifestVersion": "1",
-        "generator": {"name": "hdp-reference", "version": __version__},
+        "generator": {"name": "harness-factory", "version": __version__},
         "source": expected_source,
         "artifacts": [
             {
@@ -159,18 +153,15 @@ def _validate_generated_harness(
     if manifest != expected_manifest:
         raise HdpGenerationError("generated harness manifest was modified or is not canonical")
     for relative, content in expected_files.items():
-        if not _is_control_path(relative):
-            continue
         path = harness / relative
         if path.is_symlink() or not path.is_file():
-            raise HdpGenerationError(f"generated control file is missing or unsafe: {relative}")
+            raise HdpGenerationError(f"generated artifact is missing or unsafe: {relative}")
         if _sha256_bytes(path.read_bytes()) != _sha256_bytes(content.encode("utf-8")):
-            raise HdpGenerationError(f"generated control file was modified: {relative}")
+            raise HdpGenerationError(f"generated artifact was modified: {relative}")
 
     artifacts = manifest.get("artifacts")
     if not isinstance(artifacts, list):
         raise HdpGenerationError("generated harness manifest artifacts must be an array")
-    tracked_controls: set[str] = set()
     tracked_paths: set[str] = set()
     for record in artifacts:
         if not isinstance(record, dict) or set(record) != {"path", "sha256", "sourceFields"}:
@@ -179,16 +170,13 @@ def _validate_generated_harness(
         if relative is None or relative in tracked_paths:
             raise HdpGenerationError("generated harness artifact path is unsafe or duplicated")
         tracked_paths.add(relative)
-        if not _is_control_path(relative):
-            continue
-        tracked_controls.add(relative)
         path = harness / relative
         if path.is_symlink() or not path.is_file():
-            raise HdpGenerationError(f"generated control file is missing or unsafe: {relative}")
+            raise HdpGenerationError(f"generated artifact is missing or unsafe: {relative}")
         if _sha256_bytes(path.read_bytes()) != record.get("sha256"):
-            raise HdpGenerationError(f"generated control file was modified: {relative}")
+            raise HdpGenerationError(f"generated artifact was modified: {relative}")
 
-    actual_controls: set[str] = set()
+    actual_paths: set[str] = set()
     for path in sorted(harness.rglob("*")):
         relative_path = path.relative_to(harness)
         if not _included(relative_path):
@@ -196,13 +184,14 @@ def _validate_generated_harness(
         relative = relative_path.as_posix()
         if path.is_symlink():
             raise HdpGenerationError(f"generated harness cannot contain symlink: {relative}")
-        if path.is_file() and _is_control_path(relative):
-            actual_controls.add(relative)
-    actual_controls.discard(".hdp/manifest.json")
-    untracked = sorted(actual_controls - tracked_controls)
+        if path.is_file():
+            actual_paths.add(relative)
+    actual_paths.discard(".hdp/manifest.json")
+    untracked = sorted(actual_paths - tracked_paths)
     if untracked:
         raise HdpGenerationError(
-            "generated harness contains untracked control files: " + ", ".join(untracked)
+            "generated harness contains untracked files; package only the exact "
+            "manifest-owned tree: " + ", ".join(untracked)
         )
 
 
@@ -231,7 +220,7 @@ def _build_statement(
         payload_digest,
         {
             "buildType": "https://harnessfactory.dev/build/codex-harness/v0.1",
-            "builder": {"id": "hdp-reference/0.1.0"},
+            "builder": {"id": f"harness-factory/{__version__}"},
             "materials": [
                 {"uri": hir.source_id, "digest": {"sha256": hir.source_digest}},
                 {

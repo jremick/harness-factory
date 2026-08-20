@@ -15,7 +15,7 @@
   "managed_files": [
     {
       "path": ".agents/skills/stockroom-task-delivery/SKILL.md",
-      "sha256": "6ced181a39602db56d067527ad1a466be9a748355c0b51ed7755505edf82135c",
+      "sha256": "9818ec092d346585c54c10eaf3208d44874e86368350bec532118e7dd5d21a48",
       "source_pointers": [
         "/metadata",
         "/intent",

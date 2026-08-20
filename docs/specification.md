@@ -147,8 +147,8 @@ Profiles are cumulative obligation sets:
 - `high-assurance`: production plus independent operation, stronger custody and
   attestation, separation of duties, and formal risk acceptance.
 
-The reference generator supports the `codex-software-development` target with a
-controlled example. The profile name is not itself evidence that every
+The Codex adapter supports the target-neutral `software-development` profile
+with a controlled example. The profile name is not itself evidence that every
 production or high-assurance obligation has been demonstrated.
 
 ## Traceability
@@ -216,4 +216,3 @@ Open questions include future module overlay semantics, a stable unknown-value
 representation, optional SACM export, Agent Spec 26.2 adoption timing, LLM-judge
 pass policy, capability-evidence grades for OASF/A2A, clause-level 29148 mapping,
 and the minimum portable OS isolation contract.
-

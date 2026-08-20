@@ -423,10 +423,14 @@ def _check_traceability(document: Mapping[str, Any]) -> List[Diagnostic]:
         _ids(_records(document, ("safety", "safetyConstraints"))),
     )
     artifacts = _ids(_records(document, ("contracts", "artifacts")))
+    components = set().union(
+        artifacts,
+        _ids(_records(document, ("contracts", "outputs"))),
+    )
     entity_ids = {
         "outcome": _ids(_records(document, ("purpose", "intendedOutcomes"))),
         "requirement": _ids(_records(document, ("requirements",))),
-        "component": artifacts,
+        "component": components,
         "test": _ids(_records(document, ("evaluation", "tests"))),
         "evidence": artifacts,
         "risk": _ids(_records(document, ("risks",))),

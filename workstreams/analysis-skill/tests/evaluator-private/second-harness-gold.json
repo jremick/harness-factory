@@ -1,6 +1,6 @@
 {
   "fixtureId": "incident-scribe-agent-spec-v2.3.0",
-  "expectStructuralValidity": true,
+  "expectStructuralValidity": false,
   "boundary": {
     "forwardAgentMayRead": [
       "second-harness/",
@@ -357,6 +357,54 @@
       "expectedClaimClasses": ["operational-behavior"],
       "sourcePathsAny": ["agent-spec.yaml"],
       "humanConfirmation": "not-required",
+      "critical": true,
+      "weight": 4
+    },
+    {
+      "id": "RISK-STALE-RUNBOOK-LIKELIHOOD-UNKNOWN",
+      "group": "risks",
+      "path": "/risks/0/likelihood",
+      "expectedUnknown": true,
+      "expectedEpistemic": ["unknown"],
+      "expectedClaimClasses": ["absent-or-unknowable"],
+      "sourcePathsAny": ["agent-spec.yaml"],
+      "humanConfirmation": "required",
+      "critical": true,
+      "weight": 4
+    },
+    {
+      "id": "RISK-STALE-RUNBOOK-RESIDUAL-UNKNOWN",
+      "group": "risks",
+      "path": "/risks/0/residual",
+      "expectedUnknown": true,
+      "expectedEpistemic": ["unknown"],
+      "expectedClaimClasses": ["absent-or-unknowable"],
+      "sourcePathsAny": ["agent-spec.yaml"],
+      "humanConfirmation": "required",
+      "critical": true,
+      "weight": 4
+    },
+    {
+      "id": "RISK-CORRELATED-SIGNAL-LIKELIHOOD-UNKNOWN",
+      "group": "risks",
+      "path": "/risks/1/likelihood",
+      "expectedUnknown": true,
+      "expectedEpistemic": ["unknown"],
+      "expectedClaimClasses": ["absent-or-unknowable"],
+      "sourcePathsAny": ["agent-spec.yaml"],
+      "humanConfirmation": "required",
+      "critical": true,
+      "weight": 4
+    },
+    {
+      "id": "RISK-CORRELATED-SIGNAL-RESIDUAL-UNKNOWN",
+      "group": "risks",
+      "path": "/risks/1/residual",
+      "expectedUnknown": true,
+      "expectedEpistemic": ["unknown"],
+      "expectedClaimClasses": ["absent-or-unknowable"],
+      "sourcePathsAny": ["agent-spec.yaml"],
+      "humanConfirmation": "required",
       "critical": true,
       "weight": 4
     }

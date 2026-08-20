@@ -1,6 +1,7 @@
 # Existing-harness analysis integration brief
 
-Status: method, deterministic evaluator, and two frozen forward tests complete
+Status: method, deterministic evaluator, frozen forward tests, retained
+public-alpha blind failures, and evaluation-informed regression complete
 
 ## Outcome
 
@@ -13,6 +14,11 @@ Mechanics may establish operational behavior or support an explicitly labeled
 inference, but they do not establish a business outcome. When the source cannot
 support a required value, the reconstruction must expose the unknown and its
 structural consequence rather than manufacture a passing HDP.
+
+ADR 0012 makes that rule executable for the foreign fixture: raw schema validity
+is not required when the gold contract itself identifies absent required values.
+Those values must instead appear as explicit unknown evidence records, while all
+content, coverage, confidence and zero-false-assertion gates remain unchanged.
 
 ## Deliverables
 
@@ -102,7 +108,7 @@ whole-document fidelity.
 Two exploratory agent runs were interrupted and excluded because the skill
 changed during execution. The foreign run also saw a release-notes-specific
 scaffold that was unrelated to its subject. Their payloads were moved
-recoverably to `/Users/jarel/.Trash/hdp-analysis-invalidated-20260812/`; the
+recoverably to a local, untracked archive; the
 invalidation notice remains under `tests/invalidated-runs/`. They are not inputs,
 gold, baselines, or reported results.
 
@@ -147,6 +153,47 @@ before reading the harness. A later final read found concurrent skill drift to
 All seven harness inputs, the schema, and the evidence contract remained stable.
 The run is scored against the task-start skill read but is not a fully immutable
 execution; a copied read-only skill snapshot would provide stronger proof.
+
+### 2026-08-20 public-alpha blind sequence
+
+Four immutable-input foreign-harness attempts were completed by fresh
+`gpt-5.6-sol` agents at `xhigh`; a schema-mismatched third attempt was stopped
+and invalidated before reconstruction. Every completed score remains retained,
+including failures:
+
+| Run | Overall | Exact | Correct unknown | False assertions | Critical | Result |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| 1 | 0.750303 | 22 | 1 | 3 | 2 | fail |
+| 2 | 0.734883 | 17 | 5 | 4 | 1 | fail |
+| 4 | 0.914799 | 24 | 5 | 2 | 1 | fail |
+| 5 | 0.947037 | 22 | 5 | 1 | 1 | fail |
+
+Run 5 passed the content, coverage, evidence-contract, confidence and overall
+score thresholds. It still failed the zero-false-assertion hard gate because a
+standalone target-user statement began with lower-case `a` rather than the
+precommitted sentence-case `A`. The run correctly retained 11 unsupported
+required fields as zero-confidence unknowns, kept `generationReady: false`, and
+preserved four contradictions. Its 316 declared-string checks and two
+representable trace-edge checks passed.
+
+The skill was subsequently clarified to sentence-case only the first remaining
+alphabetic character after removing an explicit subject-and-copula frame. Any
+follow-up on this same fixture is evaluation-informed regression, not a new
+blind result. A genuinely fresh blind claim requires a new separately controlled
+fixture and commitment.
+
+Machine-readable scores are retained in
+`tests/results/public-alpha-blind-run-{1,2,4,5}.json`. The progression is useful
+engineering evidence, but none of these four results satisfies the precommitted
+zero-false-assertion gate.
+
+The evaluation-informed run 6 reached overall `0.964835`, with 25 exact facts,
+5 correct unknowns, no critical false assertion, and one noncritical false-
+assertion category. It selected a different directly supported “no business
+KPI” limitation than the precommitted statement, so the zero-false-assertion
+gate still failed. The machine result is
+`tests/results/public-alpha-evaluation-informed-run-6.json`. No further tuning
+on this fixture is counted as independent evidence.
 
 ## Findings
 

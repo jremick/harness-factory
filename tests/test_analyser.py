@@ -4,7 +4,7 @@ from pathlib import Path
 
 from hdp.analyser import analyse_harness
 from hdp.compiler import compile_hdp
-from hdp.diagnostics import HdpGenerationError, HdpInputError
+from hdp.diagnostics import HdpInputError
 from hdp.generator import generate_harness
 from hdp.io import load_document
 from hdp.schema_validation import structural_diagnostics
@@ -16,29 +16,29 @@ BINDING = ROOT / "examples" / "software-development" / "bindings" / "codex.yaml"
 
 
 class AnalyserTests(unittest.TestCase):
-    def test_generated_public_source_reconstructs_with_explicit_unknowns(self) -> None:
+    def test_generated_public_source_reconstructs_as_valid_declared_hdp(self) -> None:
         with tempfile.TemporaryDirectory() as harness_dir, tempfile.TemporaryDirectory() as output_dir:
             generate_harness(FULL_EXAMPLE, Path(harness_dir))
             result = analyse_harness(Path(harness_dir), Path(output_dir))
             reconstructed = load_document(Path(output_dir) / "hdp.reconstructed.yaml")
             extension = reconstructed["extensions"]["x-hdp-reconstruction"]
-            self.assertFalse(result["valid"])
-            self.assertFalse(extension["generationReady"])
+            self.assertTrue(result["valid"])
+            self.assertTrue(extension["generationReady"])
             self.assertEqual(
-                extension["sourceMode"], "embedded-generated-public-projection"
+                extension["sourceMode"], "embedded-generated-source-definition"
             )
             self.assertGreater(result["fieldAssessmentCount"], 500)
-            self.assertNotEqual(structural_diagnostics(reconstructed), [])
-            self.assertEqual(result["semanticStatus"], "not-run")
+            self.assertEqual(structural_diagnostics(reconstructed), [])
+            self.assertEqual(result["semanticStatus"], "pass")
             evidence_map = load_document(Path(output_dir) / "evidence-map.json")
             records = {item["field"]: item for item in evidence_map["records"]}
             self.assertEqual(
                 records["/evaluation/tests/0/expected"]["epistemicStatus"],
-                "unknown",
+                "declared",
             )
             self.assertEqual(
                 records["/evaluation/tests/0/expected"]["claimClass"],
-                "absent-or-unknowable",
+                "operational-behavior",
             )
             self.assertFalse(
                 any(
@@ -53,7 +53,7 @@ class AnalyserTests(unittest.TestCase):
             with self.assertRaises(HdpInputError):
                 analyse_harness(Path(harness_dir), Path(output_dir))
 
-    def test_reconstructed_public_source_blocks_recompilation(self) -> None:
+    def test_reconstructed_public_source_recompiles_with_exact_parity(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             original = root / "original"
@@ -68,8 +68,14 @@ class AnalyserTests(unittest.TestCase):
                 binding["externallyEnforcedResources"],
                 ["environment", "filesystem", "network", "process", "wall-time"],
             )
-            with self.assertRaises(HdpGenerationError):
-                compile_hdp(reconstructed, extracted_binding, root / "recompiled")
+            recompilation = compile_hdp(
+                reconstructed, extracted_binding, root / "recompiled"
+            )
+            self.assertEqual(recompilation.status, "pass")
+            self.assertEqual(
+                load_document(original / ".hdp/manifest.json")["artifacts"],
+                load_document(root / "recompiled/.hdp/manifest.json")["artifacts"],
+            )
 
     def test_analyser_rejects_input_and_output_symlinks(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

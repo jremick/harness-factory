@@ -190,6 +190,13 @@ enforced.
 Create a fact table with source location, exact proposition, source role,
 epistemic status, subject/version, and freshness. Extract negative facts and
 explicit absences as carefully as positive facts. Do not write HDP prose yet.
+Split coordinated declarations into independently typed atomic facts only when
+the destination schema has distinct fields for them. A field such as trace
+retention receives its exact duration, while an adjacent aggregate-result
+retention duration remains a separate fact. For subject-phrase destinations,
+strip only an explicit subject-and-copula frame. When the destination is a
+standalone statement, change only the first remaining alphabetic character to
+sentence case and preserve the rest of the phrase exactly.
 
 ### Step 3: Map mechanics without promoting them to intent
 

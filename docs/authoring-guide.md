@@ -99,3 +99,8 @@ uv run hdp compile examples/software-development/hdp.yaml \
 Generation refuses structurally or semantically invalid input, unresolved MUST
 requirements, unsupported target profiles, non-empty unmanaged directories, and
 manual edits to generated files. Put human extensions under `manual/`.
+
+The alpha packager releases only the exact manifest-owned generated tree. A
+`manual/` extension may be retained during iterative compilation, but it must be
+promoted into a declared/generated artifact before release packaging; otherwise
+packaging fails closed.

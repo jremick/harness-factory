@@ -83,6 +83,8 @@ def verification_bundle_for(harness: Path, root: Path) -> Path:
     local = {
         "kind": "LocalVerificationEvidence",
         "passed": True,
+        "sourceSnapshot": {"commit": "a" * 40, "dirty": False, "binding": "git-commit"},
+        "subject": subject,
         "gates": [
             {"id": gate_id, "passed": True}
             for gate_id in (
@@ -97,12 +99,14 @@ def verification_bundle_for(harness: Path, root: Path) -> Path:
         "structuralStatus": "pass",
         "semanticStatus": "pass",
         "unknownRequiredFamilies": [],
+        "subject": subject,
     }
     sandbox = {
         "kind": "CodexSandboxProbe",
         "passed": True,
         "requestedModel": "gpt-5.6-sol",
         "requestedReasoningEffort": "xhigh",
+        "subject": subject,
         "probes": [
             {"id": item, "passed": True}
             for item in (
@@ -115,6 +119,7 @@ def verification_bundle_for(harness: Path, root: Path) -> Path:
         "kind": "IndependentAdversarialReview",
         "reviewerModel": "gpt-5.6-sol",
         "reasoningEffort": "xhigh",
+        "subject": subject,
         "status": "pass",
         "unresolvedCritical": [],
         "unresolvedHigh": [],
@@ -130,6 +135,7 @@ def verification_bundle_for(harness: Path, root: Path) -> Path:
             "passed": True,
             "definitionOfDoneBehaviouralGate": "pass",
             "compilation": {"hir_digest": subject["hir"]["sha256"]},
+            "subject": subject,
             "results": [{
                 "task": task,
                 "mode": "harness",
@@ -319,6 +325,43 @@ def test_release_eligibility_is_derived_from_recomputed_evidence() -> None:
         assert canonical["releaseEligible"] is False
 
 
+@pytest.mark.parametrize(
+    ("artifact", "mutation"),
+    [
+        ("local-verification", "dirty"),
+        ("behaviour-feature", "subject"),
+        ("analyser-coverage", "subject"),
+        ("sandbox-probe", "subject"),
+        ("independent-review", "subject"),
+    ],
+)
+def test_release_is_ineligible_when_raw_evidence_is_not_exact_subject(
+    artifact: str, mutation: str
+) -> None:
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        harness = root / "harness"
+        compile_hdp(EXAMPLE, BINDING, harness)
+        bundle_path = verification_bundle_for(harness, root)
+        artifact_path = root / "evidence" / f"{artifact}.json"
+        value = json.loads(artifact_path.read_text())
+        if mutation == "dirty":
+            value["sourceSnapshot"]["dirty"] = True
+        else:
+            value["subject"]["harness"]["sha256"] = "0" * 64
+        artifact_path.write_text(json.dumps(value, sort_keys=True))
+        bundle = json.loads(bundle_path.read_text())
+        record = next(item for item in bundle["artifacts"] if item["id"] == artifact)
+        record["sha256"] = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+        bundle_path.write_text(json.dumps(bundle, sort_keys=True))
+
+        packaged = package_release(
+            harness, EXAMPLE, BINDING, root / "release", conformance=bundle_path,
+        )
+
+        assert packaged["releaseEligible"] is False
+
+
 @pytest.mark.parametrize("mutation", ["subject", "missing-gate", "duplicate-gate", "extra-field"])
 def test_package_rejects_unbound_or_open_conformance(mutation: str) -> None:
     with tempfile.TemporaryDirectory() as temporary:
@@ -385,9 +428,16 @@ def test_package_rejects_definition_or_binding_mismatch(mismatch: str) -> None:
 
 @pytest.mark.parametrize(
     "relative",
-    [".codex/config.toml", ".hdp/hir.json", ".hdp/manifest.json", "scripts/extra-control.py"],
+    [
+        ".codex/config.toml",
+        ".hdp/hir.json",
+        ".hdp/manifest.json",
+        "scripts/extra-control.py",
+        "AGENTS.override.md",
+        "notes.txt",
+    ],
 )
-def test_package_rejects_modified_or_untracked_generated_controls(relative: str) -> None:
+def test_package_rejects_modified_or_untracked_generated_files(relative: str) -> None:
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
         harness = root / "harness"
@@ -396,7 +446,7 @@ def test_package_rejects_modified_or_untracked_generated_controls(relative: str)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(path.read_text() + "tamper\n" if path.exists() else "pass\n")
         with pytest.raises(
-            HdpGenerationError, match="control|match|manifest|generated harness HIR"
+            HdpGenerationError, match="artifact|untracked|match|manifest|generated harness HIR"
         ):
             package_release(harness, EXAMPLE, BINDING, root / "release")
 

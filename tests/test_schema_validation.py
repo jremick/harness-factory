@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,6 +11,13 @@ from hdp.semantic_validation import semantic_diagnostics
 
 ROOT = Path(__file__).resolve().parents[1]
 FULL_EXAMPLE = ROOT / "examples" / "software-development" / "hdp.yaml"
+CANONICAL_SCHEMA = ROOT / "src" / "hdp" / "schemas" / "hdp.schema.json"
+ANALYSIS_SKILL_SCHEMA = (
+    ROOT / "skills" / "analyse-existing-harness" / "references" / "hdp.schema.json"
+)
+HDP_DRAFT_0_1_SCHEMA_SHA256 = (
+    "4cb4a85dcdfe6b176be5760a1f109c720a66ea80a6179f94928e3683f1566e96"
+)
 
 
 class SchemaValidationTests(unittest.TestCase):
@@ -20,6 +28,13 @@ class SchemaValidationTests(unittest.TestCase):
     def test_canonical_schema_meta_validates(self) -> None:
         schema = load_canonical_schema()
         self.assertEqual(schema["$schema"], "https://json-schema.org/draft/2020-12/schema")
+
+    def test_canonical_and_analysis_skill_schema_match_hdp_draft_0_1(self) -> None:
+        canonical = CANONICAL_SCHEMA.read_bytes()
+        self.assertEqual(
+            hashlib.sha256(canonical).hexdigest(), HDP_DRAFT_0_1_SCHEMA_SHA256
+        )
+        self.assertEqual(ANALYSIS_SKILL_SCHEMA.read_bytes(), canonical)
 
     def test_full_example_is_structurally_and_semantically_valid(self) -> None:
         self.assertEqual(structural_diagnostics(self.valid), [])

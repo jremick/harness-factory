@@ -12,6 +12,7 @@ from hdp.compiler import compile_hdp
 
 ROOT = Path(__file__).parents[1]
 SCRIPT = ROOT / "skills" / "analyse-existing-harness" / "scripts" / "validate_reconstruction.py"
+ANNOTATE = ROOT / "skills" / "analyse-existing-harness" / "scripts" / "annotate_reconstruction.py"
 SCHEMA = ROOT / "skills" / "analyse-existing-harness" / "references" / "hdp.schema.json"
 CANONICAL_SCHEMA = ROOT / "src" / "hdp" / "schemas" / "hdp.schema.json"
 EXAMPLE = ROOT / "examples" / "software-development" / "hdp.yaml"
@@ -144,6 +145,78 @@ def test_cli_rejects_duplicate_yaml_keys(tmp_path):
 
     assert result.returncode == 2
     assert "found duplicate key 'kind'" in result.stdout
+
+
+def test_annotator_retains_explicit_unknown_for_absent_required_field(tmp_path):
+    definition = yaml.safe_load(EXAMPLE.read_text(encoding="utf-8"))
+    definition["risks"][0].pop("likelihood")
+    source = tmp_path / "draft.yaml"
+    source.write_text(yaml.safe_dump(definition, sort_keys=False), encoding="utf-8")
+    inventory = tmp_path / "inventory.json"
+    inventory.write_text('{"files": []}\n', encoding="utf-8")
+    overrides = tmp_path / "overrides.json"
+    overrides.write_text(
+        json.dumps({
+            "/risks/0/likelihood": {
+                "claimClass": "absent-or-unknowable",
+                "epistemicStatus": "unknown",
+                "missingEvidence": ["The source declares impact but no likelihood."],
+                "humanConfirmationReason": "A risk owner must supply likelihood.",
+            }
+        }),
+        encoding="utf-8",
+    )
+    annotated = tmp_path / "hdp.reconstructed.yaml"
+    evidence = tmp_path / "evidence-map.json"
+    annotation = subprocess.run(
+        [
+            sys.executable, str(ANNOTATE), str(source), "--inventory", str(inventory),
+            "--overrides", str(overrides), "--output", str(annotated),
+            "--report", str(evidence),
+        ],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert annotation.returncode == 0, annotation.stdout + annotation.stderr
+    record = next(
+        item for item in json.loads(evidence.read_text())["records"]
+        if item["field"] == "/risks/0/likelihood"
+    )
+    assert record["value"] is None
+    assert record["epistemicStatus"] == "unknown"
+
+    validation = subprocess.run(
+        [sys.executable, str(SCRIPT), str(annotated), "--schema", str(SCHEMA)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert validation.returncode == 2
+    assert "'likelihood' is a required property" in validation.stdout
+    assert "pointer does not resolve" not in validation.stdout
+
+
+def test_validator_rejects_unknown_assessment_for_nonexistent_optional_path(tmp_path):
+    definition = _reconstruction()
+    reconstruction = definition["extensions"]["x-hdp-reconstruction"]
+    reconstruction["sourceMode"] = "skill-assisted-reconstruction"
+    reconstruction["fieldAssessments"].append({
+        "path": "/metadata/notARealRequiredField",
+        "value": None,
+        "claimClass": "absent-or-unknowable",
+        "epistemicStatus": "unknown",
+        "confidence": 0,
+        "evidence": [],
+        "contradictions": [],
+        "missingEvidence": ["No source evidence."],
+        "humanConfirmationRequired": True,
+    })
+
+    result = _run(tmp_path, definition)
+
+    assert result.returncode == 2
+    assert "pointer does not resolve" in result.stdout
 
 
 def _analysed_public_projection(tmp_path):
