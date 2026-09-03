@@ -206,6 +206,21 @@ def test_audit_defaults_to_human_stdout(tmp_path: Path) -> None:
     assert result.stderr == ""
 
 
+def test_audit_json_includes_ahds_status_marker(tmp_path: Path) -> None:
+    harness = tmp_path / "harness"
+    compile_hdp(EXAMPLE, BINDING, harness)
+
+    result = RUNNER.invoke(
+        harness_app,
+        ["audit", str(harness), "--output", str(tmp_path / "analysis"), "--json"],
+    )
+
+    assert result.exit_code == 0, result.stderr
+    value = _json_stdout(result)
+    _assert_cli_markers(value, "audit")
+    assert value["status"] == "pass"
+
+
 def test_product_json_outputs_are_single_marked_objects(tmp_path: Path) -> None:
     project = tmp_path / "project"
     target = tmp_path / "target"
@@ -297,8 +312,36 @@ def test_strict_partial_result_keeps_machine_stdout_and_human_diagnostic_on_stde
     value = _json_stdout(result)
     _assert_cli_markers(value, "audit")
     assert value["valid"] is False
+    assert value["status"] == "fail"
     assert "ERROR:" in result.stderr
     assert "ERROR:" not in result.stdout
+
+
+def test_allow_partial_audit_json_is_marked_failed_without_stderr(
+    tmp_path: Path,
+) -> None:
+    harness = tmp_path / "foreign"
+    harness.mkdir()
+    (harness / "AGENTS.md").write_text("Run the tests.\n", encoding="utf-8")
+
+    result = RUNNER.invoke(
+        harness_app,
+        [
+            "audit",
+            str(harness),
+            "--output",
+            str(tmp_path / "analysis"),
+            "--allow-partial",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    value = _json_stdout(result)
+    _assert_cli_markers(value, "audit")
+    assert value["status"] == "fail"
+    assert value["valid"] is False
+    assert result.stderr == ""
 
 
 @pytest.mark.parametrize(

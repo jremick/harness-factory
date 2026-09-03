@@ -233,6 +233,13 @@ def audit_command(
             allow_partial=True,
             strict_subject=True,
         )
+        result = {
+            **result,
+            # The product audit contract uses status as the machine-readable
+            # outcome consumed by AHDS; partial results remain explicitly
+            # failed even when --allow-partial permits a zero exit.
+            "status": "pass" if result["valid"] else "fail",
+        }
         _human_or_json(
             result,
             command="audit",

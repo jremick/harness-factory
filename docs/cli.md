@@ -66,6 +66,10 @@ is never mixed into machine-readable stdout. Deterministic results may still
 be emitted as JSON before a non-zero exit; invocation and input errors emit no
 JSON and report an actionable diagnostic on stderr.
 
+For `audit --json`, `status` is `pass` only when `valid` is true. It is `fail`
+for an invalid or partial reconstruction, including when `--allow-partial`
+allows the command to exit 0.
+
 ## Advanced compatibility interface
 
 The `hdp` executable retains the reference implementation's lower-level
