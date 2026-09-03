@@ -8,6 +8,11 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from .cli_contract import (
+    SUPPORTED_ADAPTER_VERSION,
+    SUPPORTED_BINDING_VERSION,
+    unsupported_version_message,
+)
 from .diagnostics import HdpInputError
 from .io import load_document
 
@@ -102,6 +107,24 @@ class CodexBinding(BindingModel):
 
 def load_codex_binding(path: Path) -> CodexBinding:
     try:
-        return CodexBinding.model_validate(load_document(path))
+        document = load_document(path)
+        for field, subject, expected in (
+            ("bindingVersion", "Codex target binding", SUPPORTED_BINDING_VERSION),
+            ("adapterVersion", "Codex adapter", SUPPORTED_ADAPTER_VERSION),
+        ):
+            actual = document.get(field)
+            if actual != expected:
+                raise HdpInputError(unsupported_version_message(subject, actual, expected))
+        if document.get("target") != "codex":
+            actual = document.get("target")
+            rendered = "<missing>" if actual is None else repr(actual)
+            raise HdpInputError(
+                f"unsupported target {rendered}; beta supports the 'codex' target. "
+                "No automatic migration is provided; select a Codex binding and "
+                "rerun validation."
+            )
+        return CodexBinding.model_validate(document)
+    except HdpInputError:
+        raise
     except ValueError as exc:
         raise HdpInputError(f"invalid Codex target binding {path}: {exc}") from exc

@@ -12,21 +12,45 @@ import yaml
 
 from ..bindings import CodexBinding
 from .. import __version__
+from ..cli_contract import (
+    LEGACY_ALPHA_FACTORY_VERSION,
+    SUPPORTED_ADAPTER_VERSION,
+    SUPPORTED_GENERATED_MANIFEST_VERSION,
+)
+from ..diagnostics import HdpInputError
 from ..generator import (
     _output_tree_violations,
     _public_source_definition,
+    _legacy_harnessctl_script,
     _render_files,
     generate_harness,
 )
 from ..hir import HIR
-from ..io import atomic_write_text, canonical_json, dump_json
+from ..io import atomic_write_text, canonical_json, dump_json, load_json
 from ..security import scan_generated_artifacts
 from .base import CompilePlan, ConformanceResult, PlannedArtifact
 
 
+def _is_legacy_alpha_output(output: Path) -> bool:
+    """Recognize only the alpha marker shape; exact bytes are checked later."""
+
+    try:
+        value = load_json(
+            output / ".hdp/runtime-policy.json",
+            label="generated runtime policy",
+        )
+    except HdpInputError:
+        return False
+    return (
+        isinstance(value, dict)
+        and "bindingVersion" not in value
+        and "adapterVersion" not in value
+    )
+
+
 class CodexAdapter:
     name = "codex"
-    version = "0.1.0"
+    version = SUPPORTED_ADAPTER_VERSION
 
     def __init__(self, binding: CodexBinding):
         self.binding = binding
@@ -182,11 +206,21 @@ integrity, not builder identity, non-repudiation, SLSA level, or certification.
         return additional, source_map
 
     def _expected_files(
-        self, hir: HIR, plan: CompilePlan
+        self, hir: HIR, plan: CompilePlan, *, legacy_alpha: bool = False
     ) -> tuple[dict[str, str], dict[str, list[str]]]:
         files, source_map = _render_files(
             hir.canonical_semantics, self._runtime_policy_overlay()
         )
+        if legacy_alpha:
+            # Released alpha artifacts predate the explicit binding/adapter
+            # markers and the bounded wrapper reader.  This is deliberately
+            # an exact renderer, not a permissive fallback for arbitrary old
+            # output.
+            policy = json.loads(files[".hdp/runtime-policy.json"])
+            policy.pop("bindingVersion", None)
+            policy.pop("adapterVersion", None)
+            files[".hdp/runtime-policy.json"] = dump_json(policy)
+            files["scripts/harnessctl.py"] = _legacy_harnessctl_script()
         additional, additional_source_map = self._additional_files(hir, plan)
         files.update(additional)
         source_map.update(additional_source_map)
@@ -223,7 +257,10 @@ integrity, not builder identity, non-repudiation, SLSA level, or certification.
             return ConformanceResult(status="fail", checks=tuple(checks))
 
         plan = self.plan(hir)
-        expected_files, expected_source_map = self._expected_files(hir, plan)
+        legacy_alpha = _is_legacy_alpha_output(output)
+        expected_files, expected_source_map = self._expected_files(
+            hir, plan, legacy_alpha=legacy_alpha
+        )
         required = ["AGENTS.md", ".codex/config.toml", ".hdp/hir.json", "HarnessCard.md"]
         for relative in required:
             checks.append({"id": f"file:{relative}", "passed": (output / relative).is_file()})
@@ -254,11 +291,11 @@ integrity, not builder identity, non-repudiation, SLSA level, or certification.
 
         def read_json(relative: str) -> tuple[dict[str, Any], str | None]:
             try:
-                value = json.loads((output / relative).read_text(encoding="utf-8"))
+                value = load_json(output / relative, label=f"generated {relative}")
                 if not isinstance(value, dict):
                     return {}, "top level is not an object"
                 return value, None
-            except (OSError, json.JSONDecodeError) as exc:
+            except HdpInputError as exc:
                 return {}, str(exc)
 
         hir_value, hir_error = read_json(".hdp/hir.json")
@@ -307,8 +344,11 @@ integrity, not builder identity, non-repudiation, SLSA level, or certification.
             for relative, content in sorted(expected_files.items())
         ]
         expected_manifest_fields = {
-            "manifestVersion": "1",
-            "generator": {"name": "harness-factory", "version": __version__},
+            "manifestVersion": SUPPORTED_GENERATED_MANIFEST_VERSION,
+            "generator": {
+                "name": "harness-factory",
+                "version": LEGACY_ALPHA_FACTORY_VERSION if legacy_alpha else __version__,
+            },
             "source": {
                 "id": hir.canonical_semantics["metadata"]["id"],
                 "version": hir.canonical_semantics["metadata"]["version"],

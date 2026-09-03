@@ -9,8 +9,14 @@ from pathlib import PurePosixPath
 from typing import Any, Dict, Iterable, List, Mapping, Sequence, Tuple
 
 from . import __version__
-from .diagnostics import HdpGenerationError
-from .io import atomic_write_text, canonical_json, dump_json, load_document
+from .cli_contract import (
+    SUPPORTED_ADAPTER_VERSION,
+    SUPPORTED_BINDING_VERSION,
+    SUPPORTED_GENERATED_MANIFEST_VERSION,
+    unsupported_version_message,
+)
+from .diagnostics import HdpGenerationError, HdpInputError
+from .io import atomic_write_text, canonical_json, dump_json, load_document, load_json
 from .schema_validation import structural_diagnostics
 
 
@@ -275,6 +281,7 @@ import argparse
 import hashlib
 import json
 import os
+import stat
 from pathlib import Path
 import subprocess
 import sys
@@ -284,6 +291,41 @@ ROOT = Path(__file__).resolve().parents[1]
 POLICY_PATH = ROOT / ".hdp" / "runtime-policy.json"
 LEDGER = ROOT / "evidence" / "ledger.jsonl"
 LOG_DIR = ROOT / "evidence" / "logs"
+MAX_JSON_BYTES = 1_048_576
+
+
+def _unique_json_object(pairs):
+    value = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError("duplicate JSON key: " + repr(key))
+        value[key] = item
+    return value
+
+
+def read_json(path):
+    descriptor = os.open(
+        path,
+        os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0),
+    )
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > MAX_JSON_BYTES:
+            raise ValueError("JSON policy must be a bounded regular file")
+        chunks = []
+        remaining = MAX_JSON_BYTES + 1
+        while remaining:
+            chunk = os.read(descriptor, remaining)
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        content = b"".join(chunks)
+        if len(content) != metadata.st_size or len(content) > MAX_JSON_BYTES:
+            raise ValueError("JSON policy changed or exceeded its size limit")
+    finally:
+        os.close(descriptor)
+    return json.loads(content.decode("utf-8"), object_pairs_hook=_unique_json_object)
 
 
 def digest(value):
@@ -305,7 +347,7 @@ def referenced_paths(arguments):
 
 
 def run_command(arguments, requirement_ids):
-    policy = json.loads(POLICY_PATH.read_text(encoding="utf-8"))
+    policy = read_json(POLICY_PATH)
     if not arguments:
         raise SystemExit("no command supplied after --")
     unsupported_controls = policy.get("unsupportedEnforcementResources", [])
@@ -416,7 +458,7 @@ def write_summary(status):
 
 
 def write_block(policy_id, reason):
-    policy = json.loads(POLICY_PATH.read_text(encoding="utf-8"))
+    policy = read_json(POLICY_PATH)
     known = {item.get("id") for item in policy.get("prohibitedActionRecords", [])}
     if policy_id not in known:
         print(f"unknown prohibited policy id: {policy_id}", file=sys.stderr)
@@ -457,6 +499,29 @@ def main():
 if __name__ == "__main__":
     raise SystemExit(main())
 '''
+
+
+def _legacy_harnessctl_script() -> str:
+    """Render the exact command wrapper emitted by the released alpha.
+
+    The alpha did not include the beta bounded JSON reader.  Keep this
+    compatibility renderer derived from the current static template so the
+    accepted legacy bytes remain deterministic without maintaining a second
+    hand-copied wrapper.
+    """
+
+    rendered = _harnessctl_script()
+    rendered = rendered.replace("import stat\n", "", 1)
+    start = rendered.find("MAX_JSON_BYTES = 1_048_576\n")
+    end = rendered.find("\ndef digest(value):", start)
+    if start < 0 or end < 0:
+        raise RuntimeError("legacy alpha wrapper template drifted")
+    rendered = rendered[:start] + "\n" + rendered[end:]
+    replacement = "policy = json.loads(POLICY_PATH.read_text(encoding=\"utf-8\"))"
+    if rendered.count("policy = read_json(POLICY_PATH)") != 2:
+        raise RuntimeError("legacy alpha wrapper reader template drifted")
+    rendered = rendered.replace("policy = read_json(POLICY_PATH)", replacement)
+    return rendered
 
 
 def _state_template(definition: Mapping[str, Any]) -> str:
@@ -636,6 +701,8 @@ def _render_files(
     unsupported_enforcement = sorted(required_external_controls - externally_enforced)
     runtime_policy = {
         "policyVersion": definition["hdpVersion"],
+        "bindingVersion": SUPPORTED_BINDING_VERSION,
+        "adapterVersion": SUPPORTED_ADAPTER_VERSION,
         "default": permissions["default"],
         "filesystem": permissions.get("filesystem", {}),
         "network": permissions.get("network", {"allowed": False}),
@@ -711,12 +778,20 @@ def _load_previous_manifest(output: Path) -> Dict[str, Any]:
             )
         return {}
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        value = load_json(path, label="previous generator manifest")
+    except HdpInputError as exc:
         raise HdpGenerationError(f"cannot read previous generator manifest: {exc}") from exc
     if not isinstance(value, dict):
         raise HdpGenerationError("previous generator manifest must be an object")
-    if value.get("manifestVersion") != "1" or not isinstance(value.get("artifacts"), list):
+    if value.get("manifestVersion") != SUPPORTED_GENERATED_MANIFEST_VERSION:
+        raise HdpGenerationError(
+            unsupported_version_message(
+                "generated harness manifest",
+                value.get("manifestVersion"),
+                SUPPORTED_GENERATED_MANIFEST_VERSION,
+            )
+        )
+    if not isinstance(value.get("artifacts"), list):
         raise HdpGenerationError("previous generator manifest has an unsupported structure")
     seen: set[str] = set()
     for item in value["artifacts"]:
@@ -883,7 +958,7 @@ def generate_harness(
         for relative in sorted(files)
     ]
     manifest: Dict[str, Any] = {
-        "manifestVersion": "1",
+        "manifestVersion": SUPPORTED_GENERATED_MANIFEST_VERSION,
         "generator": {"name": "harness-factory", "version": __version__},
         "source": {
             "id": definition["metadata"]["id"],

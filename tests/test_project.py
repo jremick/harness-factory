@@ -282,8 +282,9 @@ def test_install_never_replays_unexplained_preexisting_journal() -> None:
         preview = install_harness(paths.build, target, dry_run=True)
         assert preview["status"] == "conflict"
         assert "manual recovery" in preview["conflicts"][0]["reason"]
-        with pytest.raises(HdpInputError, match="unfinished installation journal"):
-            install_harness(paths.build, target, dry_run=False)
+        live = install_harness(paths.build, target, dry_run=False)
+        assert live["status"] == "conflict"
+        assert "manual recovery" in live["conflicts"][0]["reason"]
         assert not (target / ".git/hooks/pre-commit").exists()
         assert journal.is_file()
 
@@ -304,8 +305,9 @@ def test_install_refuses_oversized_preexisting_journal_without_reading_it() -> N
             handle.write(b"\0")
 
         started = time.monotonic()
-        with pytest.raises(HdpInputError, match="unfinished installation journal"):
-            install_harness(paths.build, target, dry_run=False)
+        result = install_harness(paths.build, target, dry_run=False)
+        assert result["status"] == "conflict"
+        assert "manual recovery" in result["conflicts"][0]["reason"]
         assert time.monotonic() - started < 2
         assert journal.stat().st_size > 64 * 1024 * 1024
 

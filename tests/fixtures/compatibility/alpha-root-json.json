@@ -1,0 +1,10 @@
+{
+  "fixtureVersion": "0.1.0",
+  "layout": "legacy-root-json",
+  "sourceDefinition": "examples/software-development/hdp.yaml",
+  "sourceBinding": "examples/software-development/bindings/codex.yaml",
+  "sourceDefinitionSha256": "77769e3bad2a24cbedc99798c31f8e1ba31ee98fa51ed05f17466533c9b46a78",
+  "sourceBindingSha256": "a0d3f2fd6fe3ef29e547083ea6f42b36bc02f9eaaeebb036ea48b9748c5f8f0d",
+  "definitionPath": "hdp.json",
+  "bindingPath": "bindings/codex.json"
+}

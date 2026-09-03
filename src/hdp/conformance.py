@@ -7,6 +7,7 @@ import re
 from typing import Any, Mapping
 
 from .bindings import CodexBinding
+from .cli_contract import unsupported_version_message
 from .diagnostics import HdpGenerationError
 from .io import canonical_json
 
@@ -148,7 +149,11 @@ def canonicalise_conformance(
             f"missing={sorted(missing)}, unknown={sorted(unknown)}"
         )
     if value.get("conformanceVersion") != CONFORMANCE_VERSION:
-        raise HdpGenerationError("unsupported conformance result version")
+        raise HdpGenerationError(
+            unsupported_version_message(
+                "conformance result", value.get("conformanceVersion"), CONFORMANCE_VERSION
+            )
+        )
     if not isinstance(value.get("status"), str) or value["status"] not in GATE_STATUSES:
         raise HdpGenerationError("conformance status is invalid")
     if not isinstance(value.get("releaseEligible"), bool):

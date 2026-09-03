@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import re
+import stat
 import tomllib
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,10 +14,18 @@ from typing import Any, Iterator
 import yaml
 
 from .bindings import CodexBinding
+from .cli_contract import (
+    SUPPORTED_ADAPTER_VERSION,
+    SUPPORTED_BINDING_VERSION,
+    SUPPORTED_GENERATED_MANIFEST_VERSION,
+    SUPPORTED_HDP_VERSION,
+    SUPPORTED_HIR_VERSION,
+    unsupported_version_message,
+)
 from .conformance import binding_digest, subject_bindings
-from .diagnostics import HdpInputError
+from .diagnostics import HdpError, HdpGenerationError, HdpInputError
 from .hir import HIR
-from .io import atomic_write_text, dump_json, dump_yaml, load_document
+from .io import atomic_write_text, canonical_json, dump_json, dump_yaml, load_document
 from .schema_validation import load_canonical_schema, structural_diagnostics
 from .semantic_validation import semantic_diagnostics
 
@@ -189,14 +197,20 @@ def _partial_draft(root: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     return draft, records
 
 
-def _extract_binding(root: Path) -> dict[str, Any]:
+def _extract_binding(
+    root: Path, *, strict: bool = False, allow_legacy_alpha: bool = False
+) -> dict[str, Any]:
     config_path = root / ".codex" / "config.toml"
     parsed: dict[str, Any] = {}
     if config_path.is_file():
         try:
             parsed = tomllib.loads(config_path.read_text(encoding="utf-8"))
-        except (OSError, tomllib.TOMLDecodeError):
+        except (OSError, tomllib.TOMLDecodeError) as exc:
+            if strict:
+                raise HdpInputError(f"Codex binding configuration is malformed: {exc}") from exc
             parsed = {}
+    elif strict:
+        raise HdpInputError("Codex binding configuration is missing: .codex/config.toml")
     if parsed.get("mcp_servers"):
         raise HdpInputError(
             "Codex adapter 0.1.0 cannot reconstruct MCP configuration without an exact "
@@ -206,14 +220,35 @@ def _extract_binding(root: Path) -> dict[str, Any]:
     runtime_policy_path = root / ".hdp" / "runtime-policy.json"
     if runtime_policy_path.is_file():
         try:
-            runtime_policy = json.loads(runtime_policy_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
+            runtime_policy = load_document(runtime_policy_path)
+        except HdpInputError as exc:
+            if strict:
+                raise HdpInputError(f"Codex runtime policy is invalid: {exc}") from exc
             runtime_policy = {}
+    elif strict:
+        raise HdpInputError("Codex runtime policy is missing: .hdp/runtime-policy.json")
+    if strict:
+        legacy_markers_absent = all(
+            field not in runtime_policy for field in ("bindingVersion", "adapterVersion")
+        )
+        for field, subject, expected in (
+            ("bindingVersion", "Codex target binding", SUPPORTED_BINDING_VERSION),
+            ("adapterVersion", "Codex adapter", SUPPORTED_ADAPTER_VERSION),
+        ):
+            actual = runtime_policy.get(field)
+            if allow_legacy_alpha and legacy_markers_absent:
+                actual = expected
+            if actual != expected:
+                raise HdpInputError(unsupported_version_message(subject, actual, expected))
     return {
-        "bindingVersion": "0.1.0",
+        "bindingVersion": runtime_policy.get(
+            "bindingVersion", SUPPORTED_BINDING_VERSION
+        ),
         "kind": "TargetBinding",
         "target": "codex",
-        "adapterVersion": "0.1.0",
+        "adapterVersion": runtime_policy.get(
+            "adapterVersion", SUPPORTED_ADAPTER_VERSION
+        ),
         "settings": {
             "model": parsed.get("model") if isinstance(parsed.get("model"), str) else "UNKNOWN-REQUIRED",
             "reasoningEffort": parsed.get("model_reasoning_effort") if parsed.get("model_reasoning_effort") in {"low", "medium", "high", "xhigh"} else "UNKNOWN-REQUIRED",
@@ -263,8 +298,270 @@ def _hidden_projection_unknowns(draft: dict[str, Any]) -> list[tuple[str, str]]:
     return unknowns
 
 
-def analyse_harness(harness: Path, output: Path, *, allow_partial: bool = False) -> dict[str, Any]:
+def _path_present(path: Path) -> bool:
+    """Check presence without following a possibly hostile final symlink."""
+
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return False
+    return True
+
+
+def _validate_installed_ownership(
+    root: Path,
+    generated_manifest: dict[str, Any],
+) -> str:
+    """Validate only the exact generated files owned by a live installation."""
+
+    from .packaging import _read_regular_beneath, _tree_digest
+    from .project import (
+        INSTALL_LOCK,
+        INSTALL_MANIFEST,
+        INSTALL_TRANSACTION,
+        _validated_install_manifest,
+        _validate_generated_manifest_shape,
+    )
+
+    ownership_path = root / INSTALL_MANIFEST
+    if not _path_present(ownership_path):
+        raise HdpInputError(
+            "installed harness is missing the ownership manifest: "
+            f"{INSTALL_MANIFEST.as_posix()}"
+        )
+    ownership = load_document(ownership_path)
+    ownership, _previous_files = _validated_install_manifest(ownership)
+    generated_manifest = _validate_generated_manifest_shape(generated_manifest)
+
+    transaction_path = root / INSTALL_TRANSACTION
+    if _path_present(transaction_path):
+        # Keep an interrupted-install journal opaque.  Normal audit never
+        # parses or replays a journal authored by another process.
+        raise HdpInputError(
+            "an unfinished installation requires explicit manual recovery"
+        )
+    control_root = root / ".harness-factory"
+    allowed_controls = {
+        INSTALL_MANIFEST.as_posix(),
+        INSTALL_LOCK.as_posix(),
+    }
+    if control_root.is_dir():
+        for path in sorted(control_root.rglob("*")):
+            if path.is_dir():
+                continue
+            relative = path.relative_to(root).as_posix()
+            if relative not in allowed_controls:
+                raise HdpInputError(
+                    f"unexpected installer control file: {relative}"
+                )
+    lock_path = root / INSTALL_LOCK
+    if _path_present(lock_path):
+        metadata = lock_path.lstat()
+        if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
+            raise HdpInputError("installed harness lock is not a regular file")
+
+    expected_files = [
+        {"path": item["path"], "sha256": item["sha256"]}
+        for item in generated_manifest["artifacts"]
+    ]
+    manifest_bytes = _read_regular_beneath(
+        root,
+        ".hdp/manifest.json",
+        "installed generated harness manifest",
+        maximum=8 * 1024 * 1024,
+    )
+    expected_files.append({
+        "path": ".hdp/manifest.json",
+        "sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+    })
+    if ownership["sourceDefinition"] != generated_manifest["source"]:
+        raise HdpInputError(
+            "installation ownership does not match the generated source definition"
+        )
+    if ownership["sourceGenerator"] != generated_manifest["generator"]:
+        raise HdpInputError(
+            "installation ownership does not match the generated source generator"
+        )
+    if ownership["files"] != expected_files:
+        raise HdpInputError(
+            "installation ownership does not enumerate the exact generated files"
+        )
+    for item in expected_files:
+        try:
+            content = _read_regular_beneath(
+                root,
+                item["path"],
+                f"installed generated artifact {item['path']}",
+                maximum=16 * 1024 * 1024,
+            )
+        except HdpGenerationError as exc:
+            raise HdpInputError(str(exc)) from exc
+        if hashlib.sha256(content).hexdigest() != item["sha256"]:
+            raise HdpInputError(
+                f"installed generated artifact digest mismatch: {item['path']}"
+            )
+    from .packaging import _tree_digest
+
+    return _tree_digest(
+        root,
+        include_paths={item["path"] for item in expected_files},
+    )
+
+
+def _validate_embedded_subject(root: Path) -> dict[str, Any]:
+    """Validate all generated subject markers before reporting an audit as valid."""
+
+    install_control_present = any(
+        _path_present(root / relative)
+        for relative in (
+            Path(".harness-factory/install-manifest.json"),
+            Path(".harness-factory/install.lock"),
+            Path(".harness-factory/install-transaction.json"),
+        )
+    )
+    manifest = load_document(root / ".hdp" / "manifest.json")
+    if not isinstance(manifest, dict):
+        raise HdpInputError("generated harness manifest must be an object")
+    if manifest.get("manifestVersion") != SUPPORTED_GENERATED_MANIFEST_VERSION:
+        raise HdpInputError(
+            unsupported_version_message(
+                "generated harness manifest",
+                manifest.get("manifestVersion"),
+                SUPPORTED_GENERATED_MANIFEST_VERSION,
+            )
+        )
+
+    source = load_document(root / ".hdp" / "source-definition.public.json")
+    if not isinstance(source, dict):
+        raise HdpInputError("source HDP must be an object")
+    actual_source_version = source.get("hdpVersion")
+    if actual_source_version != SUPPORTED_HDP_VERSION:
+        raise HdpInputError(
+            unsupported_version_message(
+                "source HDP", actual_source_version, SUPPORTED_HDP_VERSION
+            )
+        )
+
+    raw_hir = load_document(root / ".hdp" / "hir.json")
+    if not isinstance(raw_hir, dict):
+        raise HdpInputError("embedded HIR must be an object")
+    for field, subject, expected in (
+        ("hir_version", "embedded HIR", SUPPORTED_HIR_VERSION),
+        ("source_hdp_version", "embedded HIR source HDP", SUPPORTED_HDP_VERSION),
+    ):
+        actual = raw_hir.get(field)
+        if actual != expected:
+            raise HdpInputError(unsupported_version_message(subject, actual, expected))
+    semantics = raw_hir.get("canonical_semantics")
+    if not isinstance(semantics, dict):
+        raise HdpInputError("embedded HIR canonical_semantics must be an object")
+    actual_semantics_version = semantics.get("hdpVersion")
+    if actual_semantics_version != SUPPORTED_HDP_VERSION:
+        raise HdpInputError(
+            unsupported_version_message(
+                "embedded HIR canonical semantics HDP",
+                actual_semantics_version,
+                SUPPORTED_HDP_VERSION,
+            )
+        )
+    try:
+        embedded_hir = HIR.model_validate(raw_hir)
+    except ValueError as exc:
+        raise HdpInputError(f"embedded HIR is invalid: {exc}") from exc
+
+    source_digest = hashlib.sha256(canonical_json(source).encode()).hexdigest()
+    if embedded_hir.source_digest != source_digest:
+        raise HdpInputError("embedded HIR source digest does not match source HDP")
+    source_metadata = source.get("metadata")
+    if not isinstance(source_metadata, dict):
+        raise HdpInputError("source HDP metadata must be an object")
+    if embedded_hir.source_id != source_metadata.get("id"):
+        raise HdpInputError("embedded HIR source identity does not match source HDP")
+    if embedded_hir.canonical_semantics != source:
+        raise HdpInputError("embedded HIR canonical semantics do not match source HDP")
+
+    runtime_policy = load_document(root / ".hdp" / "runtime-policy.json")
+    if not isinstance(runtime_policy, dict):
+        raise HdpInputError("generated runtime policy must be an object")
+    policy_version = runtime_policy.get("policyVersion")
+    if policy_version != SUPPORTED_HDP_VERSION:
+        raise HdpInputError(
+            unsupported_version_message(
+                "generated runtime policy HDP", policy_version, SUPPORTED_HDP_VERSION
+            )
+        )
+    legacy_alpha = all(
+        field not in runtime_policy for field in ("bindingVersion", "adapterVersion")
+    )
+    binding = CodexBinding.model_validate(
+        _extract_binding(root, strict=True, allow_legacy_alpha=legacy_alpha)
+    )
+
+    compile_plan = load_document(root / ".hdp" / "compile-plan.json")
+    if not isinstance(compile_plan, dict):
+        raise HdpInputError("Codex compile plan must be an object")
+    if compile_plan.get("adapter") != "codex":
+        actual = compile_plan.get("adapter")
+        rendered = "<missing>" if actual is None else repr(actual)
+        raise HdpInputError(
+            f"unsupported generated adapter {rendered}; beta supports 'codex'. "
+            "No automatic migration is provided; update the source explicitly "
+            "and rerun validation."
+        )
+    for field, subject, expected in (
+        ("plan_version", "Codex compile plan", SUPPORTED_ADAPTER_VERSION),
+        ("adapter_version", "Codex adapter", SUPPORTED_ADAPTER_VERSION),
+    ):
+        actual = compile_plan.get(field)
+        if actual != expected:
+            raise HdpInputError(unsupported_version_message(subject, actual, expected))
+
+    # The package verifier owns the complete generated-tree/digest comparison.
+    # Reuse it here so an audit cannot turn a stale or altered subject into a
+    # valid result by relying only on the reconstructed source document.
+    from .packaging import _validate_generated_harness, _tree_digest
+
+    try:
+        _validate_generated_harness(
+            root,
+            embedded_hir,
+            binding,
+            allow_untracked=install_control_present,
+        )
+    except HdpGenerationError as exc:
+        raise HdpInputError(str(exc)) from exc
+    if install_control_present:
+        harness_digest = _validate_installed_ownership(
+            root,
+            manifest,
+        )
+    else:
+        from .packaging import _tree_digest
+
+        harness_digest = _tree_digest(root, ignore_ephemeral=True)
+    return subject_bindings(
+        definition_id=embedded_hir.source_id,
+        definition_digest=embedded_hir.source_digest,
+        hir_digest=embedded_hir.digest(),
+        binding_target=binding.target,
+        binding_digest_value=binding_digest(binding),
+        harness_digest=harness_digest,
+    )
+
+
+def analyse_harness(
+    harness: Path,
+    output: Path,
+    *,
+    allow_partial: bool = False,
+    strict_subject: bool | None = None,
+) -> dict[str, Any]:
     root = _prepare_directory(harness, label="harness", must_exist=True)
+    if strict_subject is None:
+        # The direct generator API can intentionally emit source-only fixtures.
+        # Once embedded compile metadata exists, default to the fail-closed
+        # product subject contract even for import-level callers.
+        strict_subject = (root / ".hdp" / "hir.json").exists()
     inventory = inventory_harness(root)
     output = _prepare_directory(output, label="analysis output", must_exist=False)
     if output == root or root in output.parents:
@@ -336,34 +633,46 @@ def analyse_harness(harness: Path, output: Path, *, allow_partial: bool = False)
         "structuralDiagnostics": [item.to_dict() for item in structural],
         "semanticDiagnostics": [item.to_dict() for item in semantic],
     }
+    subject_errors: list[str] = []
     if source_mode.startswith("embedded"):
-        try:
-            manifest = load_document(root / ".hdp/manifest.json")
-            embedded_hir = HIR.model_validate(load_document(root / ".hdp/hir.json"))
-            binding_model = CodexBinding.model_validate(_extract_binding(root))
-            from .packaging import _tree_digest
-
-            coverage["subject"] = subject_bindings(
-                definition_id=embedded_hir.source_id,
-                definition_digest=embedded_hir.source_digest,
-                hir_digest=embedded_hir.digest(),
-                binding_target=binding_model.target,
-                binding_digest_value=binding_digest(binding_model),
-                harness_digest=_tree_digest(root, ignore_ephemeral=True),
-            )
-            if manifest.get("source") != {
-                "id": embedded_hir.source_id,
-                "version": embedded_hir.canonical_semantics.get("metadata", {}).get("version"),
-                "sha256": embedded_hir.source_digest,
-            }:
+        if strict_subject:
+            try:
+                coverage["subject"] = _validate_embedded_subject(root)
+            except (OSError, ValueError, HdpError) as exc:
+                subject_errors.append(str(exc))
                 coverage.pop("subject", None)
-        except (OSError, ValueError, HdpInputError):
-            coverage.pop("subject", None)
+        else:
+            try:
+                manifest = load_document(root / ".hdp/manifest.json")
+                embedded_hir = HIR.model_validate(load_document(root / ".hdp/hir.json"))
+                binding_model = CodexBinding.model_validate(_extract_binding(root))
+                from .packaging import _tree_digest
+
+                coverage["subject"] = subject_bindings(
+                    definition_id=embedded_hir.source_id,
+                    definition_digest=embedded_hir.source_digest,
+                    hir_digest=embedded_hir.digest(),
+                    binding_target=binding_model.target,
+                    binding_digest_value=binding_digest(binding_model),
+                    harness_digest=_tree_digest(root, ignore_ephemeral=True),
+                )
+                if manifest.get("source") != {
+                    "id": embedded_hir.source_id,
+                    "version": embedded_hir.canonical_semantics.get("metadata", {}).get("version"),
+                    "sha256": embedded_hir.source_digest,
+                }:
+                    coverage.pop("subject", None)
+            except (OSError, ValueError, HdpError):
+                coverage.pop("subject", None)
+    coverage["subjectStatus"] = "pass" if not subject_errors else "fail"
+    coverage["subjectDiagnostics"] = subject_errors
     uncertainty = {
         "unknowns": [item for item in evidence if item["epistemicStatus"] == "unknown"],
         "inferences": [item for item in evidence if item["epistemicStatus"] == "inferred"],
         "conflicts": [item for item in evidence if item["contradictions"]],
-        "releaseBlocking": bool(unknown_families or structural or semantic),
+        "releaseBlocking": bool(
+            unknown_families or structural or semantic or subject_errors
+        ),
     }
     parity_suite = {
         "version": "0.1.0",
@@ -395,10 +704,12 @@ def analyse_harness(harness: Path, output: Path, *, allow_partial: bool = False)
     atomic_write_text(output / "HarnessCard.md", _harness_card(draft, coverage))
     return {
         "output": str(output), "sourceMode": source_mode,
-        "valid": not structural and not semantic,
+        "valid": not structural and not semantic and not subject_errors,
         "fieldAssessmentCount": len(evidence),
         "structuralStatus": coverage["structuralStatus"],
         "semanticStatus": coverage["semanticStatus"],
         "unknownRequiredFamilies": unknown_families,
         "inventoryFiles": len(inventory), "evidenceRecords": len(evidence),
+        "subjectStatus": coverage["subjectStatus"],
+        "subjectDiagnostics": subject_errors,
     }

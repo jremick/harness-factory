@@ -2,6 +2,7 @@
 
 import json
 import os
+import stat
 import tempfile
 from pathlib import Path
 from typing import Any, Dict
@@ -21,9 +22,11 @@ class _UniqueKeyLoader(yaml.SafeLoader):
 
 
 _MAX_DOCUMENT_BYTES = 1_048_576
+_MAX_JSON_BYTES = 8 * 1024 * 1024
 _MAX_DOCUMENT_DEPTH = 64
 _MAX_DOCUMENT_ITEMS = 100_000
 _YAML_MERGE_TAG = "tag:yaml.org,2002:merge"
+_NOFOLLOW_READ_FLAGS = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
 
 
 def _construct_unique_mapping(
@@ -131,6 +134,69 @@ def _check_document_limits(value: Any) -> None:
             )
 
 
+def _read_json_file(path: Path, *, label: str, maximum: int) -> bytes:
+    """Read one regular JSON file without following its final path component."""
+
+    try:
+        descriptor = os.open(path, _NOFOLLOW_READ_FLAGS)
+    except OSError as exc:
+        raise HdpInputError(f"cannot read {label}: {exc}") from exc
+    try:
+        metadata = os.fstat(descriptor)
+        if not stat.S_ISREG(metadata.st_mode):
+            raise HdpInputError(f"cannot read {label}: expected a regular file")
+        if metadata.st_size > maximum:
+            raise HdpInputError(
+                f"cannot read {label}: document exceeds {maximum} bytes"
+            )
+        chunks: list[bytes] = []
+        remaining = maximum + 1
+        while remaining:
+            try:
+                chunk = os.read(descriptor, min(1024 * 1024, remaining))
+            except OSError as exc:
+                raise HdpInputError(f"cannot read {label}: {exc}") from exc
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        raw_bytes = b"".join(chunks)
+        if len(raw_bytes) > maximum or len(raw_bytes) != metadata.st_size:
+            raise HdpInputError(f"cannot read {label}: file changed while read")
+        return raw_bytes
+    finally:
+        os.close(descriptor)
+
+
+def load_json_bytes(
+    raw_bytes: bytes, *, label: str, maximum: int = _MAX_JSON_BYTES
+) -> Any:
+    """Parse bounded JSON with duplicate-key rejection and document limits."""
+
+    if len(raw_bytes) > maximum:
+        raise HdpInputError(f"cannot read {label}: document exceeds {maximum} bytes")
+    try:
+        raw = raw_bytes.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise HdpInputError(f"cannot read {label}: document is not valid UTF-8") from exc
+    try:
+        value = json.loads(raw, object_pairs_hook=_unique_json_object)
+    except (json.JSONDecodeError, _DuplicateKeyError, RecursionError) as exc:
+        raise HdpInputError(f"cannot parse {label}: {exc}") from exc
+    _check_document_limits(value)
+    return value
+
+
+def load_json(path: Path, *, label: str | None = None, maximum: int = _MAX_JSON_BYTES) -> Any:
+    """Read and parse one bounded JSON file without following symlinks."""
+
+    return load_json_bytes(
+        _read_json_file(path, label=label or str(path), maximum=maximum),
+        label=label or str(path),
+        maximum=maximum,
+    )
+
+
 def load_document_bytes(
     raw_bytes: bytes, *, suffix: str, label: str
 ) -> Dict[str, Any]:
@@ -147,7 +213,7 @@ def load_document_bytes(
 
     try:
         if suffix.lower() == ".json":
-            value = json.loads(raw, object_pairs_hook=_unique_json_object)
+            value = load_json_bytes(raw_bytes, label=label, maximum=_MAX_DOCUMENT_BYTES)
         elif suffix.lower() in {".yaml", ".yml"}:
             _reject_yaml_references(raw)
             value = yaml.load(raw, Loader=_UniqueKeyLoader)
@@ -155,7 +221,7 @@ def load_document_bytes(
             raise HdpInputError(
                 f"unsupported document extension for {label}; expected .json, .yaml, or .yml"
             )
-    except (json.JSONDecodeError, yaml.YAMLError, _DuplicateKeyError, RecursionError) as exc:
+    except (yaml.YAMLError,) as exc:
         raise HdpInputError(f"cannot parse {label}: {exc}") from exc
 
     if not isinstance(value, dict):
@@ -166,6 +232,12 @@ def load_document_bytes(
 
 def load_document(path: Path) -> Dict[str, Any]:
     """Load a JSON or YAML mapping without constructing arbitrary objects."""
+
+    if path.suffix.lower() == ".json":
+        value = load_json(path, label=str(path), maximum=_MAX_DOCUMENT_BYTES)
+        if not isinstance(value, dict):
+            raise HdpInputError(f"{path} must contain one top-level mapping/object")
+        return value
 
     try:
         with path.open("rb") as stream:

@@ -6,7 +6,6 @@ import base64
 import fcntl
 import hashlib
 import importlib.resources
-import json
 import os
 import secrets
 import shutil
@@ -18,8 +17,23 @@ from typing import Any
 
 import yaml
 
+from . import __version__
+from .cli_contract import (
+    LEGACY_ALPHA_FACTORY_VERSION,
+    SUPPORTED_GENERATED_MANIFEST_VERSION,
+    SUPPORTED_INSTALL_MANIFEST_VERSION,
+    SUPPORTED_INSTALL_TRANSACTION_VERSION,
+    unsupported_version_message,
+)
 from .diagnostics import HdpInputError
-from .io import atomic_write_text, dump_json, dump_yaml, load_document, load_document_bytes
+from .io import (
+    atomic_write_text,
+    dump_json,
+    dump_yaml,
+    load_document,
+    load_document_bytes,
+    load_json_bytes,
+)
 
 
 INSTALL_MANIFEST = Path(".harness-factory/install-manifest.json")
@@ -60,7 +74,9 @@ def _safe_root(path: Path, *, label: str, must_exist: bool = True) -> Path:
     return resolved
 
 
-def _safe_relative(value: str) -> Path:
+def _safe_relative(value: Any) -> Path:
+    if not isinstance(value, str):
+        raise HdpInputError(f"unsafe managed artifact path: {value!r}")
     candidate = Path(value)
     if candidate.is_absolute() or not candidate.parts or ".." in candidate.parts:
         raise HdpInputError(f"unsafe managed artifact path: {value!r}")
@@ -80,6 +96,16 @@ def _safe_destination(root: Path, relative: Path) -> Path:
                 f"managed installation refuses symlink destination: {relative.as_posix()}"
             )
     return root / relative
+
+
+def _path_present(path: Path) -> bool:
+    """Check presence without following the final path component."""
+
+    try:
+        path.lstat()
+    except FileNotFoundError:
+        return False
+    return True
 
 
 def _open_parent_fd(root_fd: int, relative: Path, *, create: bool) -> tuple[int, str]:
@@ -273,17 +299,29 @@ def _recover_transaction(root_fd: int, *, expected_sha256: str) -> None:
     if snapshot["sha256"] != expected_sha256:
         raise HdpInputError("installation transaction journal changed before recovery")
     try:
-        value = json.loads(snapshot["content"].decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        value = load_json_bytes(
+            snapshot["content"],
+            label="installation transaction journal",
+            maximum=_MAX_TRANSACTION_FILE_BYTES,
+        )
+    except HdpInputError as exc:
         raise HdpInputError("installation transaction journal is malformed") from exc
     entries = value.get("entries") if isinstance(value, dict) else None
     if (
         not isinstance(value, dict)
         or set(value) != {"schemaVersion", "kind", "entries"}
-        or value.get("schemaVersion") != "1"
+        or value.get("schemaVersion") != SUPPORTED_INSTALL_TRANSACTION_VERSION
         or value.get("kind") != "HarnessInstallTransaction"
         or not isinstance(entries, list)
     ):
+        if isinstance(value, dict) and value.get("schemaVersion") != SUPPORTED_INSTALL_TRANSACTION_VERSION:
+            raise HdpInputError(
+                unsupported_version_message(
+                    "installation transaction",
+                    value.get("schemaVersion"),
+                    SUPPORTED_INSTALL_TRANSACTION_VERSION,
+                )
+            )
         raise HdpInputError("installation transaction journal is malformed")
     seen: set[str] = set()
     for item in reversed(entries):
@@ -450,6 +488,81 @@ class ManagedSource:
     sha256: str
 
 
+def _validate_generated_manifest_shape(manifest: Any) -> dict[str, Any]:
+    """Validate the complete generated-manifest trust boundary."""
+
+    if not isinstance(manifest, dict):
+        raise HdpInputError("generated harness manifest must be an object")
+    if set(manifest) != {
+        "manifestVersion",
+        "generator",
+        "source",
+        "artifacts",
+        "staleGeneratedArtifactsRetained",
+        "manualExtensionRoot",
+    }:
+        raise HdpInputError("generated harness manifest has an unsupported structure")
+    if manifest.get("manifestVersion") != SUPPORTED_GENERATED_MANIFEST_VERSION:
+        raise HdpInputError(
+            unsupported_version_message(
+                "generated harness manifest",
+                manifest.get("manifestVersion"),
+                SUPPORTED_GENERATED_MANIFEST_VERSION,
+            )
+        )
+    generator = manifest.get("generator")
+    if not isinstance(generator, dict) or set(generator) != {"name", "version"}:
+        raise HdpInputError("generated harness manifest generator metadata is malformed")
+    if generator.get("name") != "harness-factory":
+        raise HdpInputError("generated harness manifest generator is not Harness Factory")
+    if generator.get("version") not in {__version__, LEGACY_ALPHA_FACTORY_VERSION}:
+        raise HdpInputError(
+            unsupported_version_message(
+                "generated harness generator",
+                generator.get("version"),
+                f"{__version__} or {LEGACY_ALPHA_FACTORY_VERSION}",
+            )
+        )
+    source = manifest.get("source")
+    if not isinstance(source, dict) or set(source) != {"id", "version", "sha256"}:
+        raise HdpInputError("generated harness manifest source metadata is malformed")
+    if (
+        not isinstance(source.get("id"), str)
+        or not isinstance(source.get("version"), str)
+        or not isinstance(source.get("sha256"), str)
+        or len(source["sha256"]) != 64
+        or any(character not in "0123456789abcdef" for character in source["sha256"])
+    ):
+        raise HdpInputError("generated harness manifest source metadata is invalid")
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, list):
+        raise HdpInputError("generated harness manifest has no artifact array")
+    seen: set[str] = set()
+    for item in artifacts:
+        if not isinstance(item, dict) or set(item) != {"path", "sha256", "sourceFields"}:
+            raise HdpInputError("generated harness manifest contains an invalid artifact")
+        relative = _safe_relative(item.get("path"))
+        key = relative.as_posix()
+        if relative == Path(".hdp/manifest.json") or key in seen:
+            raise HdpInputError(f"duplicate or reserved generated artifact path: {key}")
+        seen.add(key)
+        digest = item.get("sha256")
+        source_fields = item.get("sourceFields")
+        if (
+            not isinstance(digest, str)
+            or len(digest) != 64
+            or any(character not in "0123456789abcdef" for character in digest)
+            or not isinstance(source_fields, list)
+            or not all(isinstance(pointer, str) for pointer in source_fields)
+        ):
+            raise HdpInputError(f"generated harness artifact metadata is invalid: {key}")
+    if manifest.get("staleGeneratedArtifactsRetained") != []:
+        raise HdpInputError("generated harness manifest retains stale artifacts")
+    if manifest.get("manualExtensionRoot") != "manual/":
+        raise HdpInputError("generated harness manifest manual extension root is invalid")
+    return manifest
+
+
 def _managed_sources(harness: Path) -> tuple[dict[str, Any], list[ManagedSource]]:
     harness = _safe_root(harness, label="generated harness")
     manifest_relative = Path(".hdp/manifest.json")
@@ -465,16 +578,11 @@ def _managed_sources(harness: Path) -> tuple[dict[str, Any], list[ManagedSource]
             suffix=".json",
             label="generated harness manifest",
         )
-        artifacts = manifest.get("artifacts")
-        if not isinstance(artifacts, list):
-            raise HdpInputError("generated harness manifest has no artifact array")
+        manifest = _validate_generated_manifest_shape(manifest)
+        artifacts = manifest["artifacts"]
         sources: list[ManagedSource] = []
         seen: set[str] = set()
         for item in artifacts:
-            if not isinstance(item, dict) or not isinstance(item.get("path"), str):
-                raise HdpInputError(
-                    "generated harness manifest contains an invalid artifact"
-                )
             relative = _safe_relative(item["path"])
             key = relative.as_posix()
             if relative == manifest_relative:
@@ -527,54 +635,123 @@ def _managed_sources(harness: Path) -> tuple[dict[str, Any], list[ManagedSource]
         os.close(root_fd)
 
 
+def _validated_install_manifest(value: Any) -> tuple[dict[str, Any], dict[str, str]]:
+    """Validate an existing ownership manifest before planning any writes."""
+
+    if not isinstance(value, dict):
+        raise HdpInputError("installation manifest must be an object")
+    if value.get("manifestVersion") != SUPPORTED_INSTALL_MANIFEST_VERSION:
+        raise HdpInputError(
+            unsupported_version_message(
+                "installation manifest",
+                value.get("manifestVersion"),
+                SUPPORTED_INSTALL_MANIFEST_VERSION,
+            )
+        )
+    if set(value) != {"manifestVersion", "sourceDefinition", "sourceGenerator", "files"}:
+        raise HdpInputError("installation manifest has an unsupported structure")
+    source_definition = value.get("sourceDefinition")
+    if (
+        not isinstance(source_definition, dict)
+        or set(source_definition) != {"id", "version", "sha256"}
+        or not all(isinstance(source_definition.get(field), str) for field in source_definition)
+        or len(source_definition["sha256"]) != 64
+        or any(character not in "0123456789abcdef" for character in source_definition["sha256"])
+    ):
+        raise HdpInputError("installation manifest source metadata is malformed")
+    source_generator = value.get("sourceGenerator")
+    if not isinstance(source_generator, dict) or set(source_generator) != {"name", "version"}:
+        raise HdpInputError("installation manifest generator metadata is malformed")
+    if source_generator.get("name") != "harness-factory":
+        raise HdpInputError("installation manifest generator is not Harness Factory")
+    if source_generator.get("version") not in {__version__, LEGACY_ALPHA_FACTORY_VERSION}:
+        raise HdpInputError(
+            unsupported_version_message(
+                "installation manifest generator",
+                source_generator.get("version"),
+                f"{__version__} or {LEGACY_ALPHA_FACTORY_VERSION}",
+            )
+        )
+    files = value.get("files")
+    if not isinstance(files, list):
+        raise HdpInputError("installation manifest files must be an array")
+    previous_files: dict[str, str] = {}
+    for item in files:
+        if not isinstance(item, dict) or set(item) != {"path", "sha256"}:
+            raise HdpInputError("installation manifest contains an invalid file record")
+        relative = _safe_relative(item.get("path"))
+        digest = item.get("sha256")
+        if (
+            relative.as_posix() in previous_files
+            or not isinstance(digest, str)
+            or len(digest) != 64
+            or any(character not in "0123456789abcdef" for character in digest)
+        ):
+            raise HdpInputError("installation manifest contains an unsafe or duplicated file")
+        previous_files[relative.as_posix()] = digest
+    return value, previous_files
+
+
+def _load_existing_install_manifest(
+    target: Path, root_fd: int | None
+) -> tuple[dict[str, Any], dict[str, str]]:
+    """Read an ownership manifest through the same validated path for dry/live runs."""
+
+    relative = INSTALL_MANIFEST
+    if root_fd is None:
+        path = _safe_destination(target, relative)
+        if not _path_present(path):
+            return {}, {}
+        return _validated_install_manifest(load_document(path))
+    snapshot = _snapshot_at(root_fd, relative)
+    if snapshot is None:
+        return {}, {}
+    value = load_document_bytes(
+        snapshot["content"], suffix=".json", label="installation manifest"
+    )
+    return _validated_install_manifest(value)
+
+
+def _journal_conflict_result(
+    target: Path, harness: Path, manifest: dict[str, Any], *, dry_run: bool
+) -> dict[str, Any]:
+    """Return the same opaque recovery conflict for dry and live invocations."""
+
+    return {
+        "status": "conflict",
+        "dryRun": dry_run,
+        "target": str(target),
+        "source": str(Path(harness).resolve()),
+        "sourceDefinition": manifest.get("source", {}),
+        "actions": [],
+        "conflicts": [{
+            "path": INSTALL_TRANSACTION.as_posix(),
+            "reason": "an unfinished installation requires explicit manual recovery",
+        }],
+    }
+
+
 def install_harness(harness: Path, target: Path, *, dry_run: bool) -> dict[str, Any]:
     target = _safe_root(target, label="target repository")
     manifest, sources = _managed_sources(harness)
     pending_journal = _safe_destination(target, INSTALL_TRANSACTION)
-    if dry_run and pending_journal.exists():
-        return {
-            "status": "conflict",
-            "dryRun": True,
-            "target": str(target),
-            "source": str(Path(harness).resolve()),
-            "sourceDefinition": manifest.get("source", {}),
-            "actions": [],
-            "conflicts": [{
-                "path": INSTALL_TRANSACTION.as_posix(),
-                "reason": "an unfinished installation requires explicit manual recovery",
-            }],
-        }
+    # Check before acquiring the live lock so a known hostile/opaque journal
+    # causes no target write.  The locked recheck below closes the race.
+    if _path_present(pending_journal):
+        return _journal_conflict_result(target, harness, manifest, dry_run=dry_run)
+    # Validate an existing ownership manifest before live lock acquisition.
+    # The locked read below is still required for the race-safe write plan, but
+    # malformed `{}` or duplicate-key manifests must not create even a lock
+    # file as a side effect.
+    _load_existing_install_manifest(target, None)
     lock_context = nullcontext(None) if dry_run else _target_lock(target)
     with lock_context as root_fd:
         if root_fd is not None and _entry_at(root_fd, INSTALL_TRANSACTION) is not None:
-            raise HdpInputError(
-                "an unfinished installation journal exists; inspect the target and "
-                "remove it only after explicit manual recovery"
+            return _journal_conflict_result(
+                target, harness, manifest, dry_run=dry_run
             )
 
-        install_manifest_path = _safe_destination(target, INSTALL_MANIFEST)
-        previous: dict[str, Any] = {}
-        if root_fd is None:
-            if install_manifest_path.exists():
-                if install_manifest_path.is_symlink():
-                    raise HdpInputError("installation manifest cannot be a symlink")
-                previous = load_document(install_manifest_path)
-        else:
-            previous_snapshot = _snapshot_at(root_fd, INSTALL_MANIFEST)
-            if previous_snapshot is not None:
-                try:
-                    previous = json.loads(previous_snapshot["content"].decode("utf-8"))
-                except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-                    raise HdpInputError("installation manifest is malformed") from exc
-        if previous and previous.get("manifestVersion") != "1":
-            raise HdpInputError("unsupported or malformed installation manifest")
-        previous_files = {
-            item["path"]: item["sha256"]
-            for item in previous.get("files", [])
-            if isinstance(item, dict)
-            and isinstance(item.get("path"), str)
-            and isinstance(item.get("sha256"), str)
-        }
+        previous, previous_files = _load_existing_install_manifest(target, root_fd)
 
         actions: list[dict[str, str]] = []
         conflicts: list[dict[str, str]] = []
@@ -663,7 +840,7 @@ def install_harness(harness: Path, target: Path, *, dry_run: bool) -> dict[str, 
                 )
 
         install_manifest = {
-            "manifestVersion": "1",
+            "manifestVersion": SUPPORTED_INSTALL_MANIFEST_VERSION,
             "sourceDefinition": manifest.get("source", {}),
             "sourceGenerator": manifest.get("generator", {}),
             "files": installed,
@@ -686,7 +863,7 @@ def install_harness(harness: Path, target: Path, *, dry_run: bool) -> dict[str, 
         if len(journal_entries) > 1024:
             raise HdpInputError("installation transaction exceeds 1024 managed writes")
         journal = dump_json({
-            "schemaVersion": "1",
+            "schemaVersion": SUPPORTED_INSTALL_TRANSACTION_VERSION,
             "kind": "HarnessInstallTransaction",
             "entries": journal_entries,
         }).encode("utf-8")
