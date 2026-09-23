@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from rich.text import Text
 from typer.testing import CliRunner
 
 from hdp import __version__
@@ -112,12 +113,12 @@ def _unpack_alpha_generated_fixture(destination: Path) -> Path:
 def test_real_entry_points_make_no_argument_help_successful(capsys: pytest.CaptureFixture[str]) -> None:
     assert harness_main([]) == 0
     harness_output = capsys.readouterr()
-    assert "Usage: harness" in harness_output.out
+    assert "Usage: harness" in Text.from_ansi(harness_output.out).plain
     assert harness_output.err == ""
 
     assert main([]) == 0
     hdp_output = capsys.readouterr()
-    assert "Usage: hdp" in hdp_output.out
+    assert "Usage: hdp" in Text.from_ansi(hdp_output.out).plain
     assert hdp_output.err == ""
 
 
