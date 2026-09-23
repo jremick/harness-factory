@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict
 
 from .adapters import CodexAdapter
 from .bindings import load_codex_binding
+from .cli_contract import SUPPORTED_HDP_VERSION, unsupported_version_message
 from .conformance import stable_binding_identity
 from .diagnostics import HdpGenerationError
 from .hir import HIR
@@ -48,6 +49,7 @@ def _compilable_document(document: dict[str, Any]) -> dict[str, Any]:
 
 def validate_and_normalise(definition_path: Path, *, binding_ref: str | None = None) -> HIR:
     document = load_document(definition_path)
+    _require_supported_hdp_version(document)
     diagnostics = structural_diagnostics(document)
     if not diagnostics:
         diagnostics.extend(semantic_diagnostics(document, definition_path.parent))
@@ -69,6 +71,7 @@ def compile_hdp(
 ) -> CompilationResult:
     stages: list[StageResult] = []
     document = load_document(definition_path)
+    _require_supported_hdp_version(document)
     stages.append(StageResult(stage="ingest", status="pass", details={"source": str(definition_path)}))
     structural = structural_diagnostics(document)
     stages.append(StageResult(
@@ -132,6 +135,14 @@ def compile_hdp(
         output=str(output.resolve()), hir_digest=hir.digest(), manifest=manifest,
         stages=tuple(stages),
     )
+
+
+def _require_supported_hdp_version(document: dict[str, Any]) -> None:
+    actual = document.get("hdpVersion")
+    if actual != SUPPORTED_HDP_VERSION:
+        raise HdpGenerationError(
+            unsupported_version_message("HDP definition", actual, SUPPORTED_HDP_VERSION)
+        )
 
 
 def compare_hdp(left: Path, right: Path) -> dict[str, Any]:

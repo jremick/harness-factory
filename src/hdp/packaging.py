@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import mimetypes
 import os
-import shutil
 import stat
 from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
@@ -14,7 +12,17 @@ from typing import Any, Mapping
 from .adapters import CodexAdapter
 from . import __version__
 from .bindings import CodexBinding, load_codex_binding
-from .compiler import validate_and_normalise
+from .cli_contract import (
+    LEGACY_ALPHA_FACTORY_VERSION,
+    SUPPORTED_ADAPTER_VERSION,
+    SUPPORTED_BINDING_VERSION,
+    SUPPORTED_GENERATED_MANIFEST_VERSION,
+    SUPPORTED_HDP_VERSION,
+    SUPPORTED_HIR_VERSION,
+    SUPPORTED_RELEASE_MANIFEST_VERSION,
+    unsupported_version_message,
+)
+from .compiler import _compilable_document, validate_and_normalise
 from .conformance import (
     binding_digest,
     binding_document,
@@ -24,10 +32,12 @@ from .conformance import (
     stable_binding_identity,
     subject_bindings,
 )
-from .diagnostics import HdpGenerationError
+from .diagnostics import HdpGenerationError, HdpInputError
 from .hir import HIR
-from .io import atomic_write_text, canonical_json, dump_json
+from .io import atomic_write_text, canonical_json, dump_json, load_json_bytes
 from .normalise import normalise_hdp
+from .schema_validation import structural_diagnostics
+from .semantic_validation import semantic_diagnostics
 from .verification_evidence import validate_verification_bundle
 
 
@@ -111,8 +121,8 @@ def _read_regular_beneath(
 def _read_json_beneath(root: Path, relative: str, label: str) -> Any:
     try:
         content = _read_regular_beneath(root, relative, label, maximum=_MAX_JSON_BYTES)
-        return json.loads(content.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return load_json_bytes(content, label=label, maximum=_MAX_JSON_BYTES)
+    except HdpInputError as exc:
         raise HdpGenerationError(f"{label} does not match valid JSON: {exc}") from exc
 
 
@@ -158,9 +168,23 @@ def _copy_regular_tree(source: Path, target: Path) -> None:
         os.chmod(destination, stat.S_IMODE(metadata.st_mode))
 
 
-def _entries(root: Path, *, ignore_ephemeral: bool = False) -> list[dict[str, Any]]:
+def _entries(
+    root: Path,
+    *,
+    ignore_ephemeral: bool = False,
+    include_paths: set[str] | None = None,
+) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
-    for path in sorted(root.rglob("*")):
+    if include_paths is None:
+        paths = sorted(root.rglob("*"))
+    else:
+        paths = []
+        for value in sorted(include_paths):
+            relative = _safe_relative(value)
+            if relative is None:
+                raise HdpGenerationError(f"release payload has an unsafe owned path: {value!r}")
+            paths.append(root / PurePosixPath(relative))
+    for path in paths:
         relative_path = path.relative_to(root)
         if ignore_ephemeral and not _included(relative_path):
             continue
@@ -191,15 +215,28 @@ def _entries(root: Path, *, ignore_ephemeral: bool = False) -> list[dict[str, An
     return records
 
 
-def _tree_digest(root: Path, *, ignore_ephemeral: bool = False) -> str:
-    return _sha256_bytes(canonical_json(_entries(root, ignore_ephemeral=ignore_ephemeral)).encode())
+def _tree_digest(
+    root: Path,
+    *,
+    ignore_ephemeral: bool = False,
+    include_paths: set[str] | None = None,
+) -> str:
+    return _sha256_bytes(
+        canonical_json(
+            _entries(
+                root,
+                ignore_ephemeral=ignore_ephemeral,
+                include_paths=include_paths,
+            )
+        ).encode()
+    )
 
 
 def _read_json(path: Path, label: str) -> Any:
     try:
         content = _read_regular_bytes(path, label, maximum=_MAX_JSON_BYTES)
-        return json.loads(content.decode("utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return load_json_bytes(content, label=label, maximum=_MAX_JSON_BYTES)
+    except (HdpGenerationError, HdpInputError) as exc:
         raise HdpGenerationError(f"{label} does not match valid JSON: {exc}") from exc
 
 
@@ -213,16 +250,38 @@ def _safe_relative(value: Any) -> str | None:
 
 
 def _validate_generated_harness(
-    harness: Path, hir: HIR, binding: CodexBinding
+    harness: Path,
+    hir: HIR,
+    binding: CodexBinding,
+    *,
+    allow_untracked: bool = False,
 ) -> None:
-    """Reject a stale/mismatched compile and modified or untracked controls."""
+    """Reject a stale/mismatched compile and modified generated controls.
 
-    _audit_regular_tree(harness, label="generated harness")
+    A standalone generated root must contain only its manifest-owned tree.  An
+    installed repository may contain unrelated user files, but its caller must
+    separately prove ownership of every generated file before opting into that
+    narrower exception.
+    """
+
+    # Installed roots also contain repository dependencies. Their files are
+    # outside the harness subject; owned files still use no-follow reads below
+    # and the installed-audit caller validates the complete ownership manifest.
+    if not allow_untracked:
+        _audit_regular_tree(harness, label="generated harness")
     manifest = _read_json_beneath(
         harness, ".hdp/manifest.json", "generated harness manifest"
     )
     if not isinstance(manifest, dict):
         raise HdpGenerationError("generated harness manifest must be an object")
+    if manifest.get("manifestVersion") != SUPPORTED_GENERATED_MANIFEST_VERSION:
+        raise HdpGenerationError(
+            unsupported_version_message(
+                "generated harness manifest",
+                manifest.get("manifestVersion"),
+                SUPPORTED_GENERATED_MANIFEST_VERSION,
+            )
+        )
     source = manifest.get("source")
     semantics = hir.canonical_semantics
     expected_source = {
@@ -241,19 +300,49 @@ def _validate_generated_harness(
     plan = _read_json_beneath(
         harness, ".hdp/compile-plan.json", "generated harness compile plan"
     )
-    if not isinstance(plan, dict) or (
+    if not isinstance(plan, dict):
+        raise HdpGenerationError("generated harness compile plan does not match its HIR and binding")
+    if plan.get("plan_version") != SUPPORTED_ADAPTER_VERSION:
+        raise HdpGenerationError(
+            unsupported_version_message(
+                "Codex compile plan",
+                plan.get("plan_version"),
+                SUPPORTED_ADAPTER_VERSION,
+            )
+        )
+    if plan.get("adapter_version") != SUPPORTED_ADAPTER_VERSION:
+        raise HdpGenerationError(
+            unsupported_version_message(
+                "Codex adapter",
+                plan.get("adapter_version"),
+                SUPPORTED_ADAPTER_VERSION,
+            )
+        )
+    if (
         plan.get("adapter") != "codex"
         or plan.get("hir_digest") != hir.digest()
-        or plan.get("adapter_version") != "0.1.0"
     ):
         raise HdpGenerationError("generated harness compile plan does not match its HIR and binding")
 
     adapter = CodexAdapter(binding)
     compile_plan = adapter.plan(hir)
-    expected_files, expected_source_map = adapter._expected_files(hir, compile_plan)
+    runtime_policy = _read_json_beneath(
+        harness, ".hdp/runtime-policy.json", "generated runtime policy"
+    )
+    legacy_alpha = (
+        isinstance(runtime_policy, dict)
+        and "bindingVersion" not in runtime_policy
+        and "adapterVersion" not in runtime_policy
+    )
+    expected_files, expected_source_map = adapter._expected_files(
+        hir, compile_plan, legacy_alpha=legacy_alpha
+    )
     expected_manifest = {
-        "manifestVersion": "1",
-        "generator": {"name": "harness-factory", "version": __version__},
+        "manifestVersion": SUPPORTED_GENERATED_MANIFEST_VERSION,
+        "generator": {
+            "name": "harness-factory",
+            "version": LEGACY_ALPHA_FACTORY_VERSION if legacy_alpha else __version__,
+        },
         "source": expected_source,
         "artifacts": [
             {
@@ -292,30 +381,32 @@ def _validate_generated_harness(
         if _sha256_bytes(actual) != record.get("sha256"):
             raise HdpGenerationError(f"generated artifact was modified: {relative}")
 
-    actual_paths: set[str] = set()
-    for path in sorted(harness.rglob("*")):
-        relative_path = path.relative_to(harness)
-        if not _included(relative_path):
-            continue
-        relative = relative_path.as_posix()
-        metadata = path.lstat()
-        if stat.S_ISLNK(metadata.st_mode):
-            raise HdpGenerationError(f"generated harness cannot contain symlink: {relative}")
-        if stat.S_ISDIR(metadata.st_mode):
-            continue
-        if not stat.S_ISREG(metadata.st_mode):
-            raise HdpGenerationError(
-                f"generated harness cannot contain non-regular entry: {relative}"
-            )
-        if stat.S_ISREG(metadata.st_mode):
+    if not allow_untracked:
+        actual_paths: set[str] = set()
+        for path in sorted(harness.rglob("*")):
+            relative_path = path.relative_to(harness)
+            if not _included(relative_path):
+                continue
+            relative = relative_path.as_posix()
+            metadata = path.lstat()
+            if stat.S_ISLNK(metadata.st_mode):
+                raise HdpGenerationError(
+                    f"generated harness cannot contain symlink: {relative}"
+                )
+            if stat.S_ISDIR(metadata.st_mode):
+                continue
+            if not stat.S_ISREG(metadata.st_mode):
+                raise HdpGenerationError(
+                    f"generated harness cannot contain non-regular entry: {relative}"
+                )
             actual_paths.add(relative)
-    actual_paths.discard(".hdp/manifest.json")
-    untracked = sorted(actual_paths - tracked_paths)
-    if untracked:
-        raise HdpGenerationError(
-            "generated harness contains untracked files; package only the exact "
-            "manifest-owned tree: " + ", ".join(untracked)
-        )
+        actual_paths.discard(".hdp/manifest.json")
+        untracked = sorted(actual_paths - tracked_paths)
+        if untracked:
+            raise HdpGenerationError(
+                "generated harness contains untracked files; package only the exact "
+                "manifest-owned tree: " + ", ".join(untracked)
+            )
 
 
 def _statement(
@@ -423,16 +514,27 @@ def package_release(
     atomic_write_text(payload / "conformance.json", dump_json(conformance_data))
     if conformance is not None:
         evidence_root = payload / "verification-evidence"
-        atomic_write_text(evidence_root / "bundle.json", conformance.read_text(encoding="utf-8"))
+        bundle_bytes = _read_regular_bytes(
+            conformance, "verification evidence bundle", maximum=_MAX_JSON_BYTES
+        )
+        atomic_write_text(
+            evidence_root / "bundle.json", bundle_bytes.decode("utf-8")
+        )
         for path in evidence_paths.values():
             relative = path.relative_to(conformance.parent.resolve())
             destination = evidence_root / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(path, destination)
+            destination.write_bytes(
+                _read_regular_bytes(
+                    path,
+                    f"verification evidence artifact {relative}",
+                    maximum=_MAX_JSON_BYTES,
+                )
+            )
     records = _entries(payload)
     payload_digest = _sha256_bytes(canonical_json(records).encode())
     manifest = {
-        "manifestVersion": "0.1.0",
+        "manifestVersion": SUPPORTED_RELEASE_MANIFEST_VERSION,
         "digestAlgorithm": "sha256",
         "payloadDigest": payload_digest,
         "files": records,
@@ -467,15 +569,77 @@ def _load_release_subjects(
     eligible = False
     try:
         raw_hir = _read_json(payload / "resolved-hir.json", "resolved HIR")
-        hir = HIR.model_validate(raw_hir)
+        if not isinstance(raw_hir, dict):
+            raise HdpGenerationError("resolved HIR must be an object")
+        for field, subject, expected in (
+            ("hir_version", "resolved HIR", SUPPORTED_HIR_VERSION),
+            ("source_hdp_version", "resolved HIR source HDP", SUPPORTED_HDP_VERSION),
+        ):
+            actual = raw_hir.get(field)
+            if actual != expected:
+                raise HdpGenerationError(
+                    unsupported_version_message(subject, actual, expected)
+                )
+        raw_semantics = raw_hir.get("canonical_semantics")
+        if not isinstance(raw_semantics, dict):
+            raise HdpGenerationError("resolved HIR canonical_semantics must be an object")
+        actual_semantics_version = raw_semantics.get("hdpVersion")
+        if actual_semantics_version != SUPPORTED_HDP_VERSION:
+            raise HdpGenerationError(
+                unsupported_version_message(
+                    "resolved HIR canonical semantics HDP",
+                    actual_semantics_version,
+                    SUPPORTED_HDP_VERSION,
+                )
+            )
         raw_binding = _read_json(payload / "resolved-binding.json", "resolved binding")
+        if not isinstance(raw_binding, dict):
+            raise HdpGenerationError("resolved binding must be an object")
+        for field, subject, expected in (
+            ("bindingVersion", "resolved Codex target binding", SUPPORTED_BINDING_VERSION),
+            ("adapterVersion", "resolved Codex adapter", SUPPORTED_ADAPTER_VERSION),
+        ):
+            actual = raw_binding.get(field)
+            if actual != expected:
+                raise HdpGenerationError(
+                    unsupported_version_message(subject, actual, expected)
+                )
         binding = CodexBinding.model_validate(raw_binding)
+        structural = structural_diagnostics(raw_semantics)
+        if structural:
+            summary = "; ".join(
+                f"{item.code} {item.instance_path or '/'}: {item.message}"
+                for item in structural[:12]
+            )
+            raise HdpGenerationError(
+                f"resolved HIR canonical semantics failed schema validation: {summary}"
+            )
+        semantic = semantic_diagnostics(raw_semantics, payload)
+        if semantic:
+            summary = "; ".join(
+                f"{item.code} {item.instance_path or '/'}: {item.message}"
+                for item in semantic[:12]
+            )
+            raise HdpGenerationError(
+                f"resolved HIR canonical semantics failed semantic validation: {summary}"
+            )
         expected_hir = normalise_hdp(
-            hir.canonical_semantics,
+            _compilable_document(raw_semantics),
             binding_ref=stable_binding_identity(binding),
         )
+        # Compare the untrusted JSON object before Pydantic normalization.  A
+        # model default or a self-consistent rebinding must never manufacture
+        # omitted/invalid fields into an accepted release.
+        if raw_hir != expected_hir.canonical_dict():
+            raise HdpGenerationError(
+                "resolved HIR fields and shape do not exactly match the canonical HIR"
+            )
+        hir = HIR.model_validate(raw_hir)
         if hir.canonical_dict() != expected_hir.canonical_dict():
-            errors.append("resolved HIR is not the canonical normalization of its definition and binding")
+            raise HdpGenerationError(
+                "resolved HIR is not the canonical normalization of its definition and binding"
+            )
+        CodexAdapter(binding).plan(expected_hir)
         _validate_generated_harness(payload / "harness", expected_hir, binding)
         subjects = subject_bindings(
             definition_id=expected_hir.source_id,
@@ -487,7 +651,11 @@ def _load_release_subjects(
         )
         raw_conformance = _read_json(payload / "conformance.json", "conformance record")
         evidence_bundle = payload / "verification-evidence" / "bundle.json"
-        if evidence_bundle.is_file():
+        if evidence_bundle.exists():
+            if evidence_bundle.is_symlink() or not evidence_bundle.is_file():
+                raise HdpGenerationError(
+                    "verification evidence bundle is present but not a regular file"
+                )
             if declares_comparative_attribution(expected_hir.canonical_semantics):
                 raise HdpGenerationError(
                     "verified comparative-attribution evidence is not implemented in v0.1"
@@ -519,16 +687,10 @@ def _load_release_subjects(
 def verify_release(release: Path) -> dict[str, Any]:
     lexical = release.expanduser().absolute()
     if lexical.is_symlink():
-        return {
-            "status": "fail", "verified": False, "releaseEligible": False,
-            "errors": ["release root cannot be a symlink"],
-        }
+        raise HdpInputError(f"release root cannot be a symlink: {lexical}")
     release = lexical.resolve()
     if not release.is_dir():
-        return {
-            "status": "fail", "verified": False, "releaseEligible": False,
-            "errors": ["release root must be a directory"],
-        }
+        raise HdpInputError(f"release root must be a directory: {release}")
     for path in sorted(release.rglob("*")):
         relative = path.relative_to(release).as_posix()
         metadata = path.lstat()
@@ -546,15 +708,21 @@ def verify_release(release: Path) -> dict[str, Any]:
     try:
         manifest = _read_json(release / "release-manifest.json", "release manifest")
     except HdpGenerationError as exc:
-        return {"status": "fail", "verified": False, "errors": [*errors, str(exc)]}
+        raise HdpInputError(str(exc)) from exc
     if not isinstance(manifest, dict):
-        return {"status": "fail", "verified": False, "errors": ["release manifest must be an object"]}
+        raise HdpInputError("release manifest must be an object")
     if set(manifest) != {
         "manifestVersion", "digestAlgorithm", "payloadDigest", "files", "releaseEligible",
     }:
         errors.append("release manifest fields are not the closed v0.1 set")
-    if manifest.get("manifestVersion") != "0.1.0":
-        errors.append("unsupported release manifest version")
+    if manifest.get("manifestVersion") != SUPPORTED_RELEASE_MANIFEST_VERSION:
+        errors.append(
+            unsupported_version_message(
+                "release manifest",
+                manifest.get("manifestVersion"),
+                SUPPORTED_RELEASE_MANIFEST_VERSION,
+            )
+        )
     if manifest.get("digestAlgorithm") != "sha256":
         errors.append("unsupported release digest algorithm")
     if not isinstance(manifest.get("releaseEligible"), bool):

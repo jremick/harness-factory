@@ -1,0 +1,11 @@
+{
+  "artifactCount": 20,
+  "bundle": "alpha-generated.tar.gz.b64",
+  "bundleSha256": "fa9f55ac3265d0f5670ff75cf62a54a6a58ea15e823a97ae9eec2a7c86258588",
+  "factoryVersion": "0.2.0a1",
+  "fixtureVersion": "0.1.0",
+  "format": "legacy-generated-alpha",
+  "harnessctlSha256": "7bb33c095685a3e63d3285eb1bcb983d1bf2c0e4557ba5c063f847d95f926aad",
+  "rootManifestSha256": "4a067cb2033604d9fd9cef010d2f79adcaf3ef839bfa4d22d47828610f360f20",
+  "runtimePolicySha256": "cd51f25ee954919465335355cd4d9b094ae65ff73f62332588b32da63161df0c"
+}

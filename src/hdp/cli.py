@@ -8,14 +8,20 @@ from pathlib import Path
 from typing import Any, Optional
 
 import typer
+from typer._click.exceptions import NoArgsIsHelpError
 
 from .adapters import CodexAdapter
 from . import __version__
 from .analyser import analyse_harness
 from .bindings import load_codex_binding
 from .compiler import compare_hdp, compile_hdp, validate_and_normalise
+from .cli_contract import (
+    CLI_CONTRACT_VERSION,
+    SUPPORTED_HDP_VERSION,
+    unsupported_version_message,
+)
 from .conformance import stable_binding_identity
-from .diagnostics import HdpError
+from .diagnostics import Diagnostic, HdpError, HdpInputError
 from .io import atomic_write_text, dump_json, load_document
 from .packaging import package_release, verify_release
 from .project import (
@@ -43,8 +49,16 @@ harness_app = typer.Typer(
 )
 
 
-def _emit(value: Any) -> None:
-    typer.echo(json.dumps(value, indent=2, sort_keys=True))
+def _emit(value: Any, *, command: str) -> None:
+    if not isinstance(value, dict):
+        raise TypeError("CLI JSON responses must be objects")
+    payload = dict(value)
+    payload.update({
+        "cliContractVersion": CLI_CONTRACT_VERSION,
+        "command": command,
+        "factoryVersion": __version__,
+    })
+    typer.echo(json.dumps(payload, indent=2, sort_keys=True))
 
 
 def _fail(message: str, code: int = 3) -> None:
@@ -52,9 +66,11 @@ def _fail(message: str, code: int = 3) -> None:
     raise typer.Exit(code)
 
 
-def _human_or_json(value: dict[str, Any], *, json_output: bool, message: str) -> None:
+def _human_or_json(
+    value: dict[str, Any], *, command: str, json_output: bool, message: str
+) -> None:
     if json_output:
-        _emit(value)
+        _emit(value, command=command)
     else:
         typer.echo(message)
 
@@ -67,11 +83,21 @@ def init_command(
         "--template",
         help="Starter template: empty or codex-sdlc.",
     ),
+    json_output: bool = typer.Option(
+        True,
+        "--json",
+        help="Emit machine-readable JSON (the default for init).",
+    ),
 ) -> None:
     """Initialize a hybrid HDP package layout without inventing domain facts."""
     if template == "codex-sdlc":
         try:
-            _emit(initialise_codex_sdlc(directory))
+            _human_or_json(
+                initialise_codex_sdlc(directory),
+                command="init",
+                json_output=json_output,
+                message=f"INITIALIZED {directory.resolve()}",
+            )
         except (HdpError, ValueError, OSError) as exc:
             _fail(str(exc))
         return
@@ -109,7 +135,12 @@ def init_command(
         "# HDP package\n\nThe starter is intentionally incomplete. Replace every `UNKNOWN-REQUIRED` "
         "from authoritative evidence, then run `hdp validate hdp.json`.\n",
     )
-    _emit({"status": "initialized-incomplete", "directory": str(directory)})
+    _human_or_json(
+        {"status": "initialized-incomplete", "directory": str(directory)},
+        command="init",
+        json_output=json_output,
+        message=f"INITIALIZED {directory}",
+    )
 
 
 @app.command("build")
@@ -132,6 +163,7 @@ def build_command(
         value = result.model_dump(mode="json")
         _human_or_json(
             value,
+            command="build",
             json_output=json_output,
             message=f"BUILT {destination} HIR sha256:{result.hir_digest}",
         )
@@ -153,12 +185,12 @@ def install_command(
 ) -> None:
     """Safely install manifest-owned generated files into a target repository."""
     try:
-        paths = resolve_project(project)
-        source = harness.resolve() if harness else paths.build
+        source = harness.resolve() if harness else resolve_project(project).build
         result = install_harness(source, target, dry_run=dry_run)
         verb = "PLANNED" if dry_run else "INSTALLED"
         _human_or_json(
             result,
+            command="install",
             json_output=json_output,
             message=f"{verb} {len(result['actions'])} managed files into {result['target']}",
         )
@@ -195,9 +227,22 @@ def audit_command(
     if destination == resolved_harness or resolved_harness in destination.parents:
         destination = resolved_harness.parent / f"{resolved_harness.name}-analysis"
     try:
-        result = analyse_harness(resolved_harness, destination, allow_partial=True)
+        result = analyse_harness(
+            resolved_harness,
+            destination,
+            allow_partial=True,
+            strict_subject=True,
+        )
+        result = {
+            **result,
+            # The product audit contract uses status as the machine-readable
+            # outcome consumed by AHDS; partial results remain explicitly
+            # failed even when --allow-partial permits a zero exit.
+            "status": "pass" if result["valid"] else "fail",
+        }
         _human_or_json(
             result,
+            command="audit",
             json_output=json_output,
             message=(
                 f"AUDITED {resolved_harness}; valid={str(result['valid']).lower()} "
@@ -240,6 +285,7 @@ def verify_project_command(
         }
         _human_or_json(
             value,
+            command="verify",
             json_output=json_output,
             message=f"VERIFIED static harness conformance at {paths.build}",
         )
@@ -288,7 +334,7 @@ def release_project_command(
             if eligible
             else f"PACKAGED but NOT ELIGIBLE at {destination}"
         )
-        _human_or_json(result, json_output=json_output, message=message)
+        _human_or_json(result, command="release", json_output=json_output, message=message)
         if not eligible:
             raise typer.Exit(2)
     except typer.Exit:
@@ -317,6 +363,7 @@ def doctor_command(json_output: bool = typer.Option(False, "--json")) -> None:
     }
     _human_or_json(
         result,
+        command="doctor",
         json_output=json_output,
         message=(
             f"DOCTOR {'PASS' if python_supported else 'FAIL'} Python "
@@ -338,7 +385,18 @@ def validate_command(
     """Run structural, semantic, and HIR invariant validation."""
     try:
         document = load_document(definition)
-        diagnostics = structural_diagnostics(document)
+        diagnostics = []
+        if document.get("hdpVersion") != SUPPORTED_HDP_VERSION:
+            diagnostics.append(
+                Diagnostic(
+                    code="HDP-COMPAT-UNSUPPORTED-VERSION",
+                    message=unsupported_version_message(
+                        "HDP definition", document.get("hdpVersion"), SUPPORTED_HDP_VERSION
+                    ),
+                    instance_path="/hdpVersion",
+                )
+            )
+        diagnostics.extend(structural_diagnostics(document))
         hir_digest = None
         if not diagnostics:
             diagnostics.extend(semantic_diagnostics(document, definition.parent))
@@ -352,7 +410,7 @@ def validate_command(
         "diagnostics": [item.to_dict() for item in diagnostics],
     }
     if json_output:
-        _emit(result)
+        _emit(result, command="validate")
     elif diagnostics:
         for item in diagnostics:
             typer.echo(f"{item.severity.upper()} {item.code} {item.instance_path or '/'}: {item.message}")
@@ -362,10 +420,17 @@ def validate_command(
         raise typer.Exit(2)
 
 
-def _compile(definition: Path, binding: Path, output: Path, force_generated: bool) -> None:
+def _compile(
+    definition: Path,
+    binding: Path,
+    output: Path,
+    force_generated: bool,
+    *,
+    command: str,
+) -> None:
     try:
         result = compile_hdp(definition, binding, output, force_generated=force_generated)
-        _emit(result.model_dump(mode="json"))
+        _emit(result.model_dump(mode="json"), command=command)
         if result.status != "pass":
             raise typer.Exit(2)
     except typer.Exit:
@@ -382,7 +447,7 @@ def compile_command(
     force_generated: bool = typer.Option(False, "--force-generated"),
 ) -> None:
     """Compile a valid HDP through the Codex adapter."""
-    _compile(definition, binding, output, force_generated)
+    _compile(definition, binding, output, force_generated, command="compile")
 
 
 @app.command("generate", hidden=True)
@@ -393,13 +458,20 @@ def generate_alias(
     force_generated: bool = typer.Option(False, "--force-generated"),
 ) -> None:
     """Compatibility alias for compile."""
-    _compile(definition, binding, output, force_generated)
+    _compile(definition, binding, output, force_generated, command="generate")
 
 
-def _analyse(harness: Path, output: Path, *, allow_partial: bool) -> None:
+def _analyse(
+    harness: Path, output: Path, *, allow_partial: bool, command: str
+) -> None:
     try:
-        result = analyse_harness(harness, output, allow_partial=True)
-        _emit(result)
+        result = analyse_harness(
+            harness,
+            output,
+            allow_partial=True,
+            strict_subject=True,
+        )
+        _emit(result, command=command)
         if not result["valid"] and not allow_partial:
             typer.echo(
                 "ERROR: reconstruction is partial or invalid; inspect the emitted "
@@ -424,7 +496,7 @@ def analyse_command(
     ),
 ) -> None:
     """Reconstruct an evidence-qualified draft HDP from a harness."""
-    _analyse(harness, output, allow_partial=allow_partial)
+    _analyse(harness, output, allow_partial=allow_partial, command="analyse")
 
 
 @app.command("inspect", hidden=True)
@@ -434,7 +506,7 @@ def inspect_alias(
     allow_partial: bool = typer.Option(False, "--allow-partial"),
 ) -> None:
     """US spelling/inspection alias for analyse."""
-    _analyse(harness, output, allow_partial=allow_partial)
+    _analyse(harness, output, allow_partial=allow_partial, command="inspect")
 
 
 @app.command("test")
@@ -452,7 +524,7 @@ def test_command(
             definition, binding_ref=stable_binding_identity(binding_value)
         )
         result = CodexAdapter(binding_value).static_check(harness, hir)
-        _emit(result.model_dump(mode="json"))
+        _emit(result.model_dump(mode="json"), command="test")
         if result.status != "pass":
             raise typer.Exit(2)
     except typer.Exit:
@@ -466,7 +538,7 @@ def diff_command(left: Path, right: Path) -> None:
     """Compare two HDPs by normalized target-neutral semantics."""
     try:
         result = compare_hdp(left, right)
-        _emit(result)
+        _emit(result, command="diff")
         if not result["parity"]:
             raise typer.Exit(1)
     except typer.Exit:
@@ -489,7 +561,10 @@ def package_command(
 ) -> None:
     """Create a deterministic local release and digest-only statements."""
     try:
-        _emit(package_release(harness, definition, binding, output, conformance=conformance))
+        _emit(
+            package_release(harness, definition, binding, output, conformance=conformance),
+            command="package",
+        )
     except (HdpError, ValueError, OSError, json.JSONDecodeError) as exc:
         _fail(str(exc))
 
@@ -497,8 +572,11 @@ def package_command(
 @app.command("verify-release")
 def verify_release_command(release: Path) -> None:
     """Recompute a release payload and reject post-package tampering."""
-    result = verify_release(release)
-    _emit(result)
+    try:
+        result = verify_release(release)
+    except HdpInputError as exc:
+        _fail(str(exc))
+    _emit(result, command="verify-release")
     if not result["verified"]:
         raise typer.Exit(2)
 
@@ -509,6 +587,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         return int(result) if isinstance(result, int) else 0
     except typer.Exit as exc:
         return int(exc.exit_code)
+    except NoArgsIsHelpError:
+        return 0
     except Exception as exc:  # Click usage and unexpected deterministic failures.
         typer.echo(f"ERROR: {exc}", err=True)
         return 3
@@ -522,6 +602,8 @@ def harness_main(argv: Optional[list[str]] = None) -> int:
         return int(result) if isinstance(result, int) else 0
     except typer.Exit as exc:
         return int(exc.exit_code)
+    except NoArgsIsHelpError:
+        return 0
     except Exception as exc:  # Click usage and unexpected deterministic failures.
         typer.echo(f"ERROR: {exc}", err=True)
         return 3

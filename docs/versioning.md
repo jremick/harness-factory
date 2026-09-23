@@ -4,6 +4,11 @@ The Harness Factory distribution and the HDP contract version independently.
 Factory `0.2.0a1` supports the compatibility matrix in
 [`compatibility.md`](compatibility.md); it is not HDP `0.2`.
 
+The machine-readable CLI response contract is a third, independent surface.
+The beta candidate emits `cliContractVersion: "0.1.0"` alongside the Factory
+version and operation name. A response-shape change requires a CLI contract
+version change even when HDP/HIR semantics remain unchanged.
+
 HDP, HIR, target bindings, adapters, release manifests, evidence records, and
 custom attestation predicates have independent semantic versions.
 
@@ -20,6 +25,11 @@ custom attestation predicates have independent semantic versions.
   keys never enter canonical HIR meaning.
 - Migrations must be explicit deterministic transformations with old/new
   digests and source maps; implicit upgrade-on-read is out of scope for v0.1.
+
+The beta has one narrow legacy exception: it validates the exact generated
+format emitted by Factory `0.2.0a1`, which omitted runtime binding and adapter
+markers. The exception is byte- and manifest-bound and does not establish
+compatibility with future alpha or beta formats.
 
 Mutable provider/model aliases are recorded as requested runtime inputs. They do
 not establish a fully reproducible model subject unless the provider exposes and

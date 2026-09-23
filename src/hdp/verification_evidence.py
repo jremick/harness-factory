@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
 
+from .cli_contract import unsupported_version_message
 from .conformance import REQUIRED_GATES, canonicalise_conformance
-from .diagnostics import HdpGenerationError
+from .diagnostics import HdpGenerationError, HdpInputError
+from .io import load_json
 
 
 EVIDENCE_VERSION = "0.1.0"
@@ -40,8 +41,8 @@ def _sha256(path: Path) -> str:
 
 def _read_json(path: Path, label: str) -> Any:
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
+        return load_json(path, label=label)
+    except HdpInputError as exc:
         raise HdpGenerationError(f"{label} is not valid JSON: {exc}") from exc
 
 
@@ -171,8 +172,16 @@ def validate_verification_bundle(
         "schemaVersion", "kind", "subject", "artifacts", "retainedFailures",
     }:
         raise HdpGenerationError("verification evidence bundle has invalid fields")
-    if value.get("schemaVersion") != EVIDENCE_VERSION or value.get("kind") != "FactoryVerificationEvidence":
-        raise HdpGenerationError("unsupported verification evidence bundle")
+    if value.get("schemaVersion") != EVIDENCE_VERSION:
+        raise HdpGenerationError(
+            unsupported_version_message(
+                "verification evidence bundle",
+                value.get("schemaVersion"),
+                EVIDENCE_VERSION,
+            )
+        )
+    if value.get("kind") != "FactoryVerificationEvidence":
+        raise HdpGenerationError("unsupported verification evidence bundle kind")
     if value.get("subject") != dict(expected_subject):
         raise HdpGenerationError("verification evidence subject does not match the release subject")
     if not isinstance(value.get("retainedFailures"), list):

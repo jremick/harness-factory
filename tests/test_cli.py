@@ -19,7 +19,7 @@ def test_validate_invalid_definition_exits_nonzero() -> None:
 
 def test_verify_release_missing_manifest_exits_nonzero() -> None:
     with tempfile.TemporaryDirectory() as temporary:
-        assert main(["verify-release", temporary]) == 2
+        assert main(["verify-release", temporary]) == 3
 
 
 def test_test_command_uses_trusted_definition_and_detects_tamper() -> None:
