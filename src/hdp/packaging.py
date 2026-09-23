@@ -264,7 +264,11 @@ def _validate_generated_harness(
     narrower exception.
     """
 
-    _audit_regular_tree(harness, label="generated harness")
+    # Installed roots also contain repository dependencies. Their files are
+    # outside the harness subject; owned files still use no-follow reads below
+    # and the installed-audit caller validates the complete ownership manifest.
+    if not allow_untracked:
+        _audit_regular_tree(harness, label="generated harness")
     manifest = _read_json_beneath(
         harness, ".hdp/manifest.json", "generated harness manifest"
     )

@@ -64,6 +64,13 @@ and, when present, `.harness-factory/install.lock`) are outside that ownership
 set. Unrelated repository files are not treated as generated or included in
 the installed harness digest.
 
+Dependency directories excluded from analysis, including `node_modules` and
+`.venv`, may contain symlinks without invalidating an installed harness. These
+entries are not inspected or included in its subject digest. Generated files,
+their parent paths and installer controls still reject symlinks or tampering.
+Standalone generated bundles and release payloads retain their closed-tree
+checks; the installed-repository exception does not apply to them.
+
 The checked-in [alpha compatibility fixtures](../tests/fixtures/compatibility/README.md)
 include immutable source/layout bytes and a digest-pinned alpha generated
 bundle. Tests consume the generated bundle directly through install, strict
